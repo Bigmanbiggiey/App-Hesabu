@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+/* ── Hesabu Design Tokens ─────────────────────────────────────────────────── */
+@theme {
+  /* Brand */
+  --color-brand-50:  oklch(97% 0.03 155);
+  --color-brand-100: oklch(93% 0.07 155);
+  --color-brand-200: oklch(87% 0.12 155);
+  --color-brand-300: oklch(78% 0.17 155);
+  --color-brand-400: oklch(68% 0.20 155);
+  --color-brand-500: oklch(57% 0.22 155);
+  --color-brand-600: oklch(48% 0.21 155);
+  --color-brand-700: oklch(40% 0.18 155);
+  --color-brand-800: oklch(32% 0.14 155);
+  --color-brand-900: oklch(24% 0.10 155);
+
+  /* M-Pesa green accent */
+  --color-mpesa-50:  oklch(97% 0.04 148);
+  --color-mpesa-100: oklch(93% 0.08 148);
+  --color-mpesa-200: oklch(87% 0.13 148);
+  --color-mpesa-400: oklch(65% 0.24 148);
+  --color-mpesa-500: oklch(54% 0.23 148);
+  --color-mpesa-600: oklch(44% 0.20 148);
+  --color-mpesa-700: oklch(36% 0.17 148);
+
+  /* Status colours */
+  --color-compliant:   oklch(60% 0.20 145);
+  --color-warning:     oklch(75% 0.18 85);
+  --color-danger:      oklch(55% 0.22 25);
+  --color-info:        oklch(60% 0.18 240);
+
+  /* Surface / text */
+  --color-surface:  oklch(99% 0.00 0);
+  --color-border:   oklch(90% 0.00 0);
+  --color-muted:    oklch(60% 0.00 0);
+  --color-text:     oklch(18% 0.00 0);
+
+  /* Typography */
+  --font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* Radius — generates rounded-card and rounded-btn utilities in Tailwind 4 */
+  --radius-card: 0.75rem;
+  --radius-btn:  0.5rem;
+}
+
+/* ── Base Resets ──────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-surface);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Button Base ──────────────────────────────────────────────────────────── */
+/*
+  In Tailwind 4, @apply cannot reference other @layer components classes.
+  So .btn is defined in raw CSS, and each variant adds appearance-only
+  utilities via @apply (using only real Tailwind utility classes).
+*/
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: var(--radius-btn);
+  min-height: 44px; /* --spacing-touch */
+  padding: 0 1.25rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 150ms, color 150ms, border-color 150ms, opacity 150ms;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+.btn:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.btn-sm {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+}
+
+/* Variants — @apply only real Tailwind utilities, never custom component classes */
+.btn-primary {
+  @apply bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+}
+.btn-secondary {
+  @apply bg-brand-50 text-brand-700 hover:bg-brand-100 border-brand-200;
+}
+.btn-ghost {
+  @apply bg-transparent text-text hover:bg-brand-50;
+}
+.btn-danger {
+  @apply bg-danger text-white hover:opacity-90;
+}
+
+/* ── Badge Base ───────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Badge variants — raw CSS only, no @apply chaining */
+.badge-green  { background-color: var(--color-brand-100);  color: var(--color-brand-700); }
+.badge-yellow { background-color: oklch(97% 0.06 85);      color: oklch(40% 0.12 85); }
+.badge-red    { background-color: oklch(96% 0.04 25);      color: oklch(38% 0.18 25); }
+.badge-gray   { background-color: oklch(94% 0.00 0);       color: oklch(45% 0.00 0); }
+.badge-blue   { background-color: oklch(94% 0.04 240);     color: oklch(40% 0.18 240); }
+
+/* ── Reusable Component Classes ───────────────────────────────────────────── */
+@layer components {
+  .card {
+    @apply bg-white rounded-card border border-border shadow-sm p-6;
+  }
+
+  .input {
+    @apply w-full rounded-btn border border-border bg-white px-3 text-sm
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+           placeholder:text-muted transition-colors;
+    min-height: 44px;
+  }
+
+  .input-error {
+    @apply border-danger focus:ring-danger;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-text mb-1;
+  }
+
+  .sidebar-link {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
+           text-gray-600 hover:bg-brand-50 hover:text-brand-700
+           transition-colors cursor-pointer;
+    min-height: 44px;
+  }
+
+  .sidebar-link-active {
+    @apply bg-brand-50 text-brand-700;
+  }
+
+  .page-header {
+    @apply flex items-center justify-between mb-6;
+  }
+
+  .page-title {
+    @apply text-2xl font-bold text-text;
+  }
+
+  .table-wrapper {
+    @apply overflow-x-auto rounded-card border border-border;
+  }
+
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table th {
+    @apply bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase
+           tracking-wide text-muted border-b border-border;
+  }
+
+  .table td {
+    @apply px-4 py-3 border-b border-border;
+  }
+
+  .table tr:last-child td {
+    @apply border-0;
+  }
+
+  .table tr:hover td {
+    background-color: color-mix(in oklch, var(--color-brand-50) 40%, transparent);
+  }
+}
