@@ -1,0 +1,23 @@
+# ── Python / Django ───────────────────────────────────────────────────────────
+backend/.venv/
+__pycache__/
+*.pyc
+backend/staticfiles/
+backend/media/
+
+# ── Node ──────────────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+
+# ── Env / secrets ─────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.prod.local
+backend/.env
+
+# ── Local-only production testing ────────────────────────────────────────────
+docker-compose.prod.local.yml
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+*.log
+.DS_Store

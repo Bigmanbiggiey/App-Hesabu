@@ -1,0 +1,83 @@
+x-backend-build: &backend-build
+  build: ./backend
+  env_file: .env
+  environment:
+    DJANGO_SETTINGS_MODULE: hesabu.settings.production
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hesabu-db-1
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - hesabu_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: hesabu-redis-1
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    <<: *backend-build
+    container_name: hesabu-backend-1
+    volumes:
+      - hesabu_media:/app/media
+    restart: unless-stopped
+
+  celery-worker:
+    <<: *backend-build
+    container_name: hesabu-celery-worker-1
+    command: celery -A hesabu worker -l info
+    volumes:
+      - hesabu_media:/app/media
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  celery-beat:
+    <<: *backend-build
+    container_name: hesabu-celery-beat-1
+    command: celery -A hesabu beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: hesabu-nginx-1
+    depends_on:
+      - backend
+    volumes:
+      - hesabu_media:/usr/share/nginx/media:ro
+    networks:
+      - default
+      - server_backend
+    restart: unless-stopped
+
+volumes:
+  hesabu_postgres_data:
+  hesabu_media:
+
+networks:
+  # Shared network the on-server Caddy container listens on. Name assumed
+  # from the existing `docker network ls` output on server-biggiey — confirm
+  # before first real deploy (see CLAUDE.md Deployment section).
+  server_backend:
+    external: true
