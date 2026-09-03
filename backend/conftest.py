@@ -1,7 +1,16 @@
 """Project-wide pytest fixtures."""
 import pytest
 from django.conf import settings as django_settings
+from django.core.cache import cache
 from rest_framework.test import APIClient
+
+
+@pytest.fixture(autouse=True)
+def _clear_cache():
+    """DRF throttling stores counters in the cache — isolate it per test."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 def pytest_collection_modifyitems(config, items):

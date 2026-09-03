@@ -22,6 +22,16 @@ bash start.sh   # every day: starts Postgres/Redis, Django, Celery worker, and V
 
 Copy `.env.example` to `backend/.env` and fill in credentials for eTIMS, Daraja, Stripe, Africa's Talking, and email before exercising those integrations.
 
+### Secret handling
+
+`backend/.env` is git-ignored and must never be committed. `backend/.env`
+*was* tracked in the initial commit (removed in `7c1c4f37`); it only ever held
+sandbox values (placeholder `SECRET_KEY`, Safaricom's public sandbox passkey),
+but if this repo is ever made public those revisions should be scrubbed
+(`git filter-repo --path backend/.env --invert-paths`) and any real
+credentials rotated. A `.pre-commit-config.yaml` (gitleaks + `detect-private-key`)
+guards against re-introducing secrets — run `pip install pre-commit && pre-commit install`.
+
 ### Manual setup
 
 ```bash

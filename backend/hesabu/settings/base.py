@@ -74,14 +74,18 @@ WSGI_APPLICATION = "hesabu.wsgi.application"
 ASGI_APPLICATION = "hesabu.asgi.application"
 
 # ── Database ──────────────────────────────────────────────────────────────────
+# DB_PASSWORD has no default on purpose — every environment must supply one
+# via .env (see .env.example) rather than silently falling back to a shared
+# weak value.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": env("DB_NAME", default="hesabu"),
         "USER": env("DB_USER", default="hesabu_user"),
-        "PASSWORD": env("DB_PASSWORD", default="hesabu_pass"),
+        "PASSWORD": env("DB_PASSWORD"),
         "HOST": env("DB_HOST", default="localhost"),
         "PORT": env("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": env.int("DB_CONN_MAX_AGE", default=60),
         "OPTIONS": {
             "connect_timeout": 10,
         },
@@ -112,6 +116,18 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
     "PAGE_SIZE": 25,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": env("THROTTLE_ANON", default="30/min"),
+        "user": env("THROTTLE_USER", default="2000/hour"),
+        # Tight scopes for the unauthenticated / abuse-prone auth endpoints.
+        "auth": env("THROTTLE_AUTH", default="10/min"),
+        "register": env("THROTTLE_REGISTER", default="5/hour"),
+    },
 }
 
 # ── JWT ───────────────────────────────────────────────────────────────────────

@@ -9,6 +9,16 @@ from .base import *  # noqa
 
 DEBUG = False
 
+# ── Throttling ───────────────────────────────────────────────────────────────
+# Keep the auth/register scopes at real (testable) values; lift the blanket
+# anon/user limits so the rest of the suite isn't rate-limited.
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
+    "anon": "100000/min",
+    "user": "100000/min",
+    "auth": "5/min",
+    "register": "3/hour",
+}
+
 # ── Database ──────────────────────────────────────────────────────────────────
 DATABASES = {
     "default": {
