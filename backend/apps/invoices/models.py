@@ -1,6 +1,15 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from apps.core.models import BaseModel
+
+TWO_PLACES = Decimal("0.01")
+
+
+def _money(value) -> Decimal:
+    """Coerce anything numeric to a 2dp Decimal, safely (handles float input)."""
+    return Decimal(str(value)).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
 
 
 class VATClass(models.TextChoices):
@@ -111,8 +120,8 @@ class Invoice(BaseModel):
 
     def recalculate_totals(self):
         items = self.line_items.all()
-        self.subtotal = sum(item.line_total for item in items)
-        self.vat_amount = sum(item.vat_amount for item in items)
+        self.subtotal = sum((item.line_total for item in items), Decimal("0"))
+        self.vat_amount = sum((item.vat_amount for item in items), Decimal("0"))
         self.total_amount = self.subtotal + self.vat_amount - self.wht_amount
         self.amount_due = self.total_amount - self.amount_paid
         self.save(update_fields=["subtotal", "vat_amount", "total_amount", "amount_due"])
@@ -140,11 +149,11 @@ class InvoiceLineItem(BaseModel):
         ordering = ["created_at"]
 
     def save(self, *args, **kwargs):
-        self.line_total = self.quantity * self.unit_price
+        self.line_total = _money(Decimal(str(self.quantity)) * Decimal(str(self.unit_price)))
         if self.vat_class == VATClass.STANDARD:
-            self.vat_rate = 16.00
-            self.vat_amount = self.line_total * (self.vat_rate / 100)
+            self.vat_rate = Decimal("16.00")
+            self.vat_amount = _money(self.line_total * self.vat_rate / Decimal("100"))
         else:
-            self.vat_rate = 0
-            self.vat_amount = 0
+            self.vat_rate = Decimal("0")
+            self.vat_amount = Decimal("0")
         super().save(*args, **kwargs)

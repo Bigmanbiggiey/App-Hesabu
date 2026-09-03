@@ -41,7 +41,10 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         check_invoice_limit(self.request.organization)
-        serializer.save(organization=self.request.organization)
+        # InvoiceSerializer.create() reads the organization from the request
+        # context and assigns the invoice number; passing organization= here
+        # too would duplicate the kwarg and raise TypeError.
+        serializer.save()
 
     @action(detail=True, methods=["post"])
     def submit_to_etims(self, request, pk=None):
