@@ -1,6 +1,18 @@
 """Project-wide pytest fixtures."""
 import pytest
+from django.conf import settings as django_settings
 from rest_framework.test import APIClient
+
+
+def pytest_collection_modifyitems(config, items):
+    """Skip @pytest.mark.postgres tests unless the DB backend is PostgreSQL."""
+    engine = django_settings.DATABASES["default"]["ENGINE"]
+    if engine.endswith("postgresql"):
+        return
+    skip = pytest.mark.skip(reason="requires the PostgreSQL backend")
+    for item in items:
+        if "postgres" in item.keywords:
+            item.add_marker(skip)
 
 from tests.factories import (
     CustomerFactory,

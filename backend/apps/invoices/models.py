@@ -91,7 +91,9 @@ class Invoice(BaseModel):
     notes = models.TextField(blank=True)
     terms = models.TextField(blank=True)
 
-    # eTIMS fields — immutable state machine (enforced by DB trigger via migration)
+    # eTIMS fields. Once etims_status == "accepted" the fiscal fields are
+    # frozen: enforced in the API by InvoiceSerializer/perform_destroy and at
+    # the database level by the triggers in migration 0003 (PostgreSQL only).
     etims_status = models.CharField(
         max_length=20, choices=EtimsStatus.choices, default=EtimsStatus.PENDING
     )
@@ -115,8 +117,27 @@ class Invoice(BaseModel):
         ordering = ["-invoice_date", "-created_at"]
         unique_together = [["organization", "invoice_number"]]
 
+    # eTIMS states past which the invoice is considered fiscalised / frozen.
+    LOCKED_ETIMS_STATUSES = ("submitted", "accepted")
+
     def __str__(self):
         return f"{self.invoice_number} — {self.customer.name}"
+
+    @property
+    def period_locked(self) -> bool:
+        return self.tax_period_id is not None and self.tax_period.status != "open"
+
+    @property
+    def etims_locked(self) -> bool:
+        return self.etims_status in self.LOCKED_ETIMS_STATUSES
+
+    def lock_reason(self):
+        """Human-readable reason this invoice may not be modified, or None."""
+        if self.period_locked:
+            return "belongs to a filed tax period"
+        if self.etims_locked:
+            return "has been submitted to KRA eTIMS"
+        return None
 
     def recalculate_totals(self):
         items = self.line_items.all()

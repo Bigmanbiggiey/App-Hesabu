@@ -59,6 +59,11 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        reason = instance.lock_reason()
+        if reason:
+            raise serializers.ValidationError(
+                f"This invoice {reason} and can no longer be modified."
+            )
         line_items_data = validated_data.pop("line_items", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

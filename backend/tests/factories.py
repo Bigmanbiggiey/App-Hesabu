@@ -11,6 +11,7 @@ from apps.accounts.models import Organization
 from apps.billing.models import BillingTransaction
 from apps.invoices.models import Customer, Invoice, InvoiceLineItem
 from apps.payments.models import MpesaTransaction
+from apps.taxes.models import TaxPeriod
 
 User = get_user_model()
 
@@ -92,6 +93,17 @@ class MpesaTransactionFactory(factory.django.DjangoModelFactory):
     transaction_time = factory.LazyFunction(timezone.now)
     raw_payload = factory.LazyFunction(dict)
     reconciliation_status = "unallocated"
+
+
+class TaxPeriodFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = TaxPeriod
+
+    organization = factory.SubFactory(OrganizationFactory)
+    period_type = "vat"
+    year = 2026
+    month = 3
+    status = "open"
 
 
 class BillingTransactionFactory(factory.django.DjangoModelFactory):
