@@ -1,9 +1,13 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.billing.limits import check_invoice_limit
+from apps.core.permissions import IsAccountant
+
+SAFE_ACTIONS = ("list", "retrieve", "pdf")
 from .models import Customer, Invoice
 from .serializers import (
     CustomerSerializer,
@@ -16,6 +20,11 @@ from .tasks import submit_invoice_to_etims
 class CustomerViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
 
+    def get_permissions(self):
+        if self.action in SAFE_ACTIONS:
+            return [IsAuthenticated()]
+        return [IsAccountant()]
+
     def get_queryset(self):
         return Customer.objects.filter(organization=self.request.organization)
 
@@ -26,6 +35,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status", "etims_status", "customer"]
+
+    def get_permissions(self):
+        if self.action in SAFE_ACTIONS:
+            return [IsAuthenticated()]
+        return [IsAccountant()]
 
     def get_queryset(self):
         return (

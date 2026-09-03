@@ -103,6 +103,15 @@ def organization_detail(request):
     if request.method == "GET":
         return Response(OrganizationSerializer(org).data)
 
+    # Org-wide settings (paybill/till, eTIMS serial, VAT defaults, invoice
+    # prefix, bank details) are management-only — a plain staff or accountant
+    # user must not be able to redirect payments or change tax defaults.
+    if request.user.role not in ("owner", "admin"):
+        return Response(
+            {"detail": "Only account owners or admins can update organisation settings."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     serializer = OrganizationSerializer(org, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)
     serializer.save()

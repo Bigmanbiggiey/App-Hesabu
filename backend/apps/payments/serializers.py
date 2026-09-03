@@ -35,6 +35,25 @@ class PaymentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at"]
 
+    def _request_org(self):
+        request = self.context.get("request")
+        return getattr(request, "organization", None)
+
+    def validate_invoice(self, invoice):
+        """Reject payments against an invoice belonging to another organisation."""
+        org = self._request_org()
+        if org is not None and invoice.organization_id != org.id:
+            raise serializers.ValidationError("Invoice not found.")
+        return invoice
+
+    def validate_mpesa_transaction(self, txn):
+        if txn is None:
+            return txn
+        org = self._request_org()
+        if org is not None and txn.organization_id != org.id:
+            raise serializers.ValidationError("M-Pesa transaction not found.")
+        return txn
+
     def create(self, validated_data):
         validated_data["organization"] = self.context["request"].organization
         return super().create(validated_data)

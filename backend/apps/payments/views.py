@@ -5,6 +5,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.permissions import IsAccountant
 from .models import MpesaTransaction, Payment, ReconciliationStatus
 from .serializers import (
     DarajaC2BCallbackSerializer,
@@ -66,6 +67,11 @@ def mpesa_c2b_callback(request):
 class MpesaTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MpesaTransactionSerializer
 
+    def get_permissions(self):
+        if self.action == "assign":
+            return [IsAccountant()]
+        return [IsAuthenticated()]
+
     def get_queryset(self):
         qs = MpesaTransaction.objects.filter(
             organization=self.request.organization
@@ -121,6 +127,11 @@ class MpesaTransactionViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [IsAuthenticated()]
+        return [IsAccountant()]
 
     def get_queryset(self):
         return Payment.objects.filter(

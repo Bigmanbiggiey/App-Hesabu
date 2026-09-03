@@ -5,8 +5,11 @@ from decimal import Decimal
 import factory
 from django.contrib.auth import get_user_model
 
+from django.utils import timezone
+
 from apps.accounts.models import Organization
 from apps.invoices.models import Customer, Invoice, InvoiceLineItem
+from apps.payments.models import MpesaTransaction
 
 User = get_user_model()
 
@@ -72,3 +75,19 @@ class InvoiceLineItemFactory(factory.django.DjangoModelFactory):
     quantity = Decimal("1")
     unit_price = Decimal("1000.00")
     vat_class = "standard"
+
+
+class MpesaTransactionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = MpesaTransaction
+
+    organization = factory.SubFactory(OrganizationFactory)
+    mpesa_receipt_number = factory.Sequence(lambda n: f"QAZ{n:07d}")
+    transaction_type = "Pay Bill"
+    amount = Decimal("1000.00")
+    msisdn = "254712345678"
+    bill_ref_number = ""
+    business_short_code = "555555"
+    transaction_time = factory.LazyFunction(timezone.now)
+    raw_payload = factory.LazyFunction(dict)
+    reconciliation_status = "unallocated"

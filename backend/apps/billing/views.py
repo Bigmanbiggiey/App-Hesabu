@@ -12,6 +12,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import Organization, SubscriptionStatus, SubscriptionTier
 from apps.core.pagination import StandardPagination
+from apps.core.permissions import IsOwnerOrAdmin
 
 from .daraja import DarajaSTKClient
 from .limits import TIER_LIMITS, get_limits
@@ -317,18 +318,12 @@ def stripe_webhook(request):
 # ── Cancel ────────────────────────────────────────────────────────────────────
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsOwnerOrAdmin])
 def cancel_subscription(request):
     """
     POST /api/v1/billing/cancel/
-    Cancels the active subscription. Owner-only.
+    Cancels the active subscription. Owner/admin-only.
     """
-    if request.user.role not in ("owner", "admin"):
-        return Response(
-            {"detail": "Only account owners can cancel the subscription."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
     org = request.organization
     org.subscription_status = SubscriptionStatus.CANCELLED
     org.save(update_fields=["subscription_status"])
