@@ -1,9 +1,12 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.billing.limits import check_invoice_limit
+from apps.core.permissions import IsAccountant
 from .models import Customer, Invoice
 from .serializers import (
     CustomerSerializer,
@@ -12,9 +15,16 @@ from .serializers import (
 )
 from .tasks import submit_invoice_to_etims
 
+SAFE_ACTIONS = ("list", "retrieve", "pdf")
+
 
 class CustomerViewSet(viewsets.ModelViewSet):
     serializer_class = CustomerSerializer
+
+    def get_permissions(self):
+        if self.action in SAFE_ACTIONS:
+            return [IsAuthenticated()]
+        return [IsAccountant()]
 
     def get_queryset(self):
         return Customer.objects.filter(organization=self.request.organization)
@@ -26,6 +36,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
 class InvoiceViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status", "etims_status", "customer"]
+
+    def get_permissions(self):
+        if self.action in SAFE_ACTIONS:
+            return [IsAuthenticated()]
+        return [IsAccountant()]
 
     def get_queryset(self):
         return (
@@ -41,7 +56,16 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         check_invoice_limit(self.request.organization)
-        serializer.save(organization=self.request.organization)
+        # InvoiceSerializer.create() reads the organization from the request
+        # context and assigns the invoice number; passing organization= here
+        # too would duplicate the kwarg and raise TypeError.
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        reason = instance.lock_reason()
+        if reason:
+            raise ValidationError(f"This invoice {reason} and cannot be deleted.")
+        instance.delete()
 
     @action(detail=True, methods=["post"])
     def submit_to_etims(self, request, pk=None):

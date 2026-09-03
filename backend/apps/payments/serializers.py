@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import serializers
 from .models import MpesaTransaction, Payment
 
@@ -35,9 +37,41 @@ class PaymentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at"]
 
+    def _request_org(self):
+        request = self.context.get("request")
+        return getattr(request, "organization", None)
+
+    def validate_invoice(self, invoice):
+        """Reject payments against an invoice belonging to another organisation."""
+        org = self._request_org()
+        if org is not None and invoice.organization_id != org.id:
+            raise serializers.ValidationError("Invoice not found.")
+        return invoice
+
+    def validate_mpesa_transaction(self, txn):
+        if txn is None:
+            return txn
+        org = self._request_org()
+        if org is not None and txn.organization_id != org.id:
+            raise serializers.ValidationError("M-Pesa transaction not found.")
+        return txn
+
     def create(self, validated_data):
         validated_data["organization"] = self.context["request"].organization
         return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        previous_invoice_id = instance.invoice_id
+        payment = super().update(instance, validated_data)
+        # Payment.save() reconciles the (new) invoice; if the payment was
+        # moved off another invoice, reconcile that one too.
+        if payment.invoice_id != previous_invoice_id:
+            from apps.invoices.models import Invoice
+
+            old = Invoice.objects.filter(pk=previous_invoice_id).first()
+            if old is not None:
+                old.reconcile_payments()
+        return payment
 
 
 class DarajaC2BCallbackSerializer(serializers.Serializer):
@@ -56,3 +90,12 @@ class DarajaC2BCallbackSerializer(serializers.Serializer):
     FirstName = serializers.CharField(allow_blank=True, default="")
     MiddleName = serializers.CharField(allow_blank=True, default="")
     LastName = serializers.CharField(allow_blank=True, default="")
+
+    def validate_TransAmount(self, value):
+        try:
+            amount = Decimal(str(value))
+        except (InvalidOperation, TypeError):
+            raise serializers.ValidationError("Invalid amount.")
+        if amount <= 0:
+            raise serializers.ValidationError("Amount must be positive.")
+        return value

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
-import { formatDate, formatKES } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import type { Organization } from "@/contexts/AuthContext";
 
 // ── Kenya counties ────────────────────────────────────────────────────────────

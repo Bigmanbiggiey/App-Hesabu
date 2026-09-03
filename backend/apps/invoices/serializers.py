@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import serializers
 from .models import Customer, Invoice, InvoiceLineItem
 
@@ -45,6 +46,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "etims_submitted_at", "created_at",
         ]
 
+    @transaction.atomic
     def create(self, validated_data):
         line_items_data = validated_data.pop("line_items")
         organization = self.context["request"].organization
@@ -55,7 +57,13 @@ class InvoiceSerializer(serializers.ModelSerializer):
         invoice.recalculate_totals()
         return invoice
 
+    @transaction.atomic
     def update(self, instance, validated_data):
+        reason = instance.lock_reason()
+        if reason:
+            raise serializers.ValidationError(
+                f"This invoice {reason} and can no longer be modified."
+            )
         line_items_data = validated_data.pop("line_items", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

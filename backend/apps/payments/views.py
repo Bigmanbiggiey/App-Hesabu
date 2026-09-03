@@ -1,10 +1,15 @@
 import logging
+from datetime import datetime
+
 from dateutil import parser as date_parser
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.decorators import daraja_ip_allowlist
+from apps.core.permissions import IsAccountant
 from .models import MpesaTransaction, Payment, ReconciliationStatus
 from .serializers import (
     DarajaC2BCallbackSerializer,
@@ -16,12 +21,37 @@ from .tasks import reconcile_mpesa_payment
 logger = logging.getLogger(__name__)
 
 
+def _parse_daraja_timestamp(raw):
+    """
+    Daraja sends ``TransTime`` as ``YYYYMMDDHHMMSS`` in East Africa Time.
+    Return a timezone-aware datetime (settings.TIME_ZONE = Africa/Nairobi);
+    fall back to now() if it can't be parsed rather than storing a naive value.
+    """
+    dt = None
+    try:
+        dt = datetime.strptime(str(raw), "%Y%m%d%H%M%S")
+    except (ValueError, TypeError):
+        try:
+            dt = date_parser.parse(str(raw))
+        except (ValueError, TypeError, OverflowError):
+            logger.warning("Unparseable Daraja TransTime %r — using now()", raw)
+            return timezone.now()
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt)
+    return dt
+
+
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@daraja_ip_allowlist
 def mpesa_c2b_callback(request):
     """
     Safaricom Daraja C2B webhook endpoint.
-    Must be publicly accessible (no auth). Validated by shortcode matching.
+
+    Unauthenticated by necessity (Safaricom calls it), so it is protected by
+    a source-IP allowlist (DARAJA_ALLOWED_IPS) plus payload validation and
+    shortcode->organisation matching. Amount is validated (> 0) by the
+    serializer; TransID gives idempotency via get_or_create.
     """
     serializer = DarajaC2BCallbackSerializer(data=request.data)
     if not serializer.is_valid():
@@ -52,7 +82,7 @@ def mpesa_c2b_callback(request):
             "last_name": data["LastName"],
             "bill_ref_number": data["BillRefNumber"],
             "business_short_code": shortcode,
-            "transaction_time": date_parser.parse(data["TransTime"]),
+            "transaction_time": _parse_daraja_timestamp(data["TransTime"]),
             "raw_payload": request.data,
         },
     )
@@ -65,6 +95,11 @@ def mpesa_c2b_callback(request):
 
 class MpesaTransactionViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = MpesaTransactionSerializer
+
+    def get_permissions(self):
+        if self.action == "assign":
+            return [IsAccountant()]
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         qs = MpesaTransaction.objects.filter(
@@ -122,7 +157,17 @@ class MpesaTransactionViewSet(viewsets.ReadOnlyModelViewSet):
 class PaymentViewSet(viewsets.ModelViewSet):
     serializer_class = PaymentSerializer
 
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [IsAuthenticated()]
+        return [IsAccountant()]
+
     def get_queryset(self):
         return Payment.objects.filter(
             organization=self.request.organization
         ).select_related("invoice", "mpesa_transaction")
+
+    def perform_destroy(self, instance):
+        invoice = instance.invoice
+        instance.delete()
+        invoice.reconcile_payments()

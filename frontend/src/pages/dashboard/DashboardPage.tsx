@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useInvoices } from "@/hooks/useInvoices";
-import { formatKES, formatDate } from "@/lib/utils";
+import { formatKES } from "@/lib/utils";
 import type { InvoiceStatus, EtimsStatus } from "@/lib/types";
 
 function statusVariant(s: InvoiceStatus): "green" | "yellow" | "red" | "gray" | "blue" {

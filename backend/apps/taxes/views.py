@@ -2,9 +2,20 @@ from decimal import Decimal
 from django.db.models import Sum
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.permissions import IsAccountant
 from .calculators import calculate_full_payroll
+
+# Actions any authenticated org member may reach; everything else is finance-only.
+_READ_ACTIONS = ("list", "retrieve")
+
+
+def _finance_permissions(view, extra_read_actions=()):
+    if view.action in _READ_ACTIONS or view.action in extra_read_actions:
+        return [IsAuthenticated()]
+    return [IsAccountant()]
 from .models import TaxPeriod, VATReturn, Employee, PAYEReturn
 from .serializers import (
     EmployeeSerializer,
@@ -17,6 +28,9 @@ from .serializers import (
 
 class TaxPeriodViewSet(viewsets.ModelViewSet):
     serializer_class = TaxPeriodSerializer
+
+    def get_permissions(self):
+        return _finance_permissions(self)
 
     def get_queryset(self):
         qs = TaxPeriod.objects.filter(organization=self.request.organization)
@@ -121,6 +135,9 @@ class TaxPeriodViewSet(viewsets.ModelViewSet):
 class VATReturnViewSet(viewsets.ModelViewSet):
     serializer_class = VATReturnSerializer
 
+    def get_permissions(self):
+        return _finance_permissions(self)
+
     def get_queryset(self):
         return VATReturn.objects.filter(
             tax_period__organization=self.request.organization
@@ -129,6 +146,10 @@ class VATReturnViewSet(viewsets.ModelViewSet):
 
 class EmployeeViewSet(viewsets.ModelViewSet):
     serializer_class = EmployeeSerializer
+
+    def get_permissions(self):
+        # calculate_payroll is a stateless helper — any member may use it.
+        return _finance_permissions(self, extra_read_actions=("calculate_payroll",))
 
     def get_queryset(self):
         qs = Employee.objects.filter(organization=self.request.organization)
@@ -147,6 +168,9 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
 class PAYEReturnViewSet(viewsets.ModelViewSet):
     serializer_class = PAYEReturnSerializer
+
+    def get_permissions(self):
+        return _finance_permissions(self)
 
     def get_queryset(self):
         qs = PAYEReturn.objects.filter(

@@ -1,17 +1,22 @@
-from rest_framework import status, generics
+from rest_framework import status, generics, mixins, viewsets
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.db.models import Sum, Count
 from django.utils import timezone
 
+from apps.billing.limits import check_user_limit
+from apps.core.permissions import IsOwnerOrAdmin
 from .models import Organization, User
 from .serializers import (
     HesabuTokenObtainPairSerializer,
     OrganizationSerializer,
     RegisterSerializer,
+    TeamMemberCreateSerializer,
     TeamMemberSerializer,
+    TeamMemberUpdateSerializer,
     UpdateUserSerializer,
     UserSerializer,
 )
@@ -20,11 +25,17 @@ from .serializers import (
 class LoginView(TokenObtainPairView):
     permission_classes = [AllowAny]
     serializer_class = HesabuTokenObtainPairSerializer
+    throttle_scope = "auth"
+
+
+class HesabuTokenRefreshView(TokenRefreshView):
+    throttle_scope = "auth"
 
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
+    throttle_scope = "register"
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -44,17 +55,58 @@ def me(request):
     return Response(UserSerializer(request.user).data)
 
 
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def team_list(request):
-    """List all users in the same organisation."""
-    org = request.organization
-    if not org:
-        return Response([])
-    members = User.objects.filter(
-        organization=org, is_active=True
-    ).order_by("role", "first_name")
-    return Response(TeamMemberSerializer(members, many=True).data)
+class TeamMemberViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    viewsets.GenericViewSet,
+):
+    """
+    GET  /api/v1/auth/team/         list org members (any authenticated user)
+    POST /api/v1/auth/team/         invite a member (owner/admin, seat-limited)
+    PATCH /api/v1/auth/team/<id>/   change role / activate-deactivate (owner/admin)
+    """
+
+    def get_permissions(self):
+        if self.action == "list":
+            return [IsAuthenticated()]
+        return [IsOwnerOrAdmin()]
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return TeamMemberCreateSerializer
+        if self.action in ("update", "partial_update"):
+            return TeamMemberUpdateSerializer
+        return TeamMemberSerializer
+
+    def get_queryset(self):
+        org = self.request.organization
+        if not org:
+            return User.objects.none()
+        return User.objects.filter(organization=org).order_by("role", "first_name")
+
+    def perform_create(self, serializer):
+        check_user_limit(self.request.organization)
+        serializer.save(organization=self.request.organization)
+
+    def _guard_target(self, instance):
+        if instance.pk == self.request.user.pk:
+            raise PermissionDenied("You cannot change your own role or status here.")
+        if instance.role == "owner":
+            raise PermissionDenied("The account owner cannot be modified here.")
+
+    def update(self, request, *args, **kwargs):
+        self._guard_target(self.get_object())
+        return super().update(request, *args, **kwargs)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            TeamMemberSerializer(serializer.instance).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 @api_view(["GET"])
@@ -102,6 +154,15 @@ def organization_detail(request):
 
     if request.method == "GET":
         return Response(OrganizationSerializer(org).data)
+
+    # Org-wide settings (paybill/till, eTIMS serial, VAT defaults, invoice
+    # prefix, bank details) are management-only — a plain staff or accountant
+    # user must not be able to redirect payments or change tax defaults.
+    if request.user.role not in ("owner", "admin"):
+        return Response(
+            {"detail": "Only account owners or admins can update organisation settings."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     serializer = OrganizationSerializer(org, data=request.data, partial=True)
     serializer.is_valid(raise_exception=True)

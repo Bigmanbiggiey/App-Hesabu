@@ -1,5 +1,6 @@
 import logging
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 
 import stripe
 from django.conf import settings
@@ -11,7 +12,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.accounts.models import Organization, SubscriptionStatus, SubscriptionTier
+from apps.core.decorators import daraja_ip_allowlist
 from apps.core.pagination import StandardPagination
+from apps.core.permissions import IsOwnerOrAdmin
 
 from .daraja import DarajaSTKClient
 from .limits import TIER_LIMITS, get_limits
@@ -66,8 +69,8 @@ def billing_status(request):
 
     invoices_this_month = Invoice.objects.filter(
         organization=org,
-        created_at__year=now.year,
-        created_at__month=now.month,
+        invoice_date__year=now.year,
+        invoice_date__month=now.month,
     ).count()
     active_users = User.objects.filter(organization=org, is_active=True).count()
 
@@ -149,10 +152,13 @@ def mpesa_initiate(request):
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@daraja_ip_allowlist
 def mpesa_callback(request):
     """
     POST /api/v1/billing/mpesa/callback/
-    Daraja STK Push result callback (no authentication — Safaricom calls this).
+    Daraja STK Push result callback. Unauthenticated (Safaricom calls it) so
+    protected by the DARAJA_ALLOWED_IPS source-IP allowlist; the paid amount
+    is checked against the pending BillingTransaction before activation.
     """
     payload = request.data
     logger.info(f"STK callback received: {payload}")
@@ -172,12 +178,33 @@ def mpesa_callback(request):
             return Response({"ResultCode": 0, "ResultDesc": "Accepted"})
 
         if result_code == 0:
-            # Payment successful — extract receipt number from metadata
+            # Payment successful — extract receipt number + amount from metadata
             items = stk_cb.get("CallbackMetadata", {}).get("Item", [])
             receipt = next(
                 (i["Value"] for i in items if i.get("Name") == "MpesaReceiptNumber"),
                 "",
             )
+            paid_raw = next(
+                (i["Value"] for i in items if i.get("Name") == "Amount"), None
+            )
+
+            # Never activate on a mismatched (or unparseable) amount.
+            try:
+                paid_amount = Decimal(str(paid_raw))
+            except (InvalidOperation, TypeError):
+                paid_amount = None
+
+            if paid_amount is None or paid_amount != txn.amount:
+                txn.status = BillingStatus.FAILED
+                txn.raw_payload = payload
+                txn.save(update_fields=["status", "raw_payload"])
+                logger.error(
+                    "STK callback amount mismatch for %s: got %r, expected %s — "
+                    "not activating.",
+                    checkout_id, paid_raw, txn.amount,
+                )
+                return Response({"ResultCode": 0, "ResultDesc": "Accepted"})
+
             txn.status            = BillingStatus.SUCCESS
             txn.gateway_reference = receipt
             txn.billing_period_start = date.today()
@@ -317,18 +344,12 @@ def stripe_webhook(request):
 # ── Cancel ────────────────────────────────────────────────────────────────────
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsOwnerOrAdmin])
 def cancel_subscription(request):
     """
     POST /api/v1/billing/cancel/
-    Cancels the active subscription. Owner-only.
+    Cancels the active subscription. Owner/admin-only.
     """
-    if request.user.role not in ("owner", "admin"):
-        return Response(
-            {"detail": "Only account owners can cancel the subscription."},
-            status=status.HTTP_403_FORBIDDEN,
-        )
-
     org = request.organization
     org.subscription_status = SubscriptionStatus.CANCELLED
     org.save(update_fields=["subscription_status"])

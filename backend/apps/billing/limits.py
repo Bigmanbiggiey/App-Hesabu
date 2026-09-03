@@ -27,11 +27,13 @@ def check_invoice_limit(org) -> None:
     if cap is None:
         return  # unlimited tier
 
+    # Count by invoice_date (not created_at) so an invoice always counts
+    # toward the same month as the tax period it will fall into.
     now = timezone.now()
     count = Invoice.objects.filter(
         organization=org,
-        created_at__year=now.year,
-        created_at__month=now.month,
+        invoice_date__year=now.year,
+        invoice_date__month=now.month,
     ).count()
 
     if count >= cap:

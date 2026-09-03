@@ -61,6 +61,38 @@ class TeamMemberSerializer(serializers.ModelSerializer):
         return obj.get_full_name()
 
 
+# Roles that can be assigned to a teammate (the single "owner" is set at
+# registration and never handed out via the team endpoint).
+ASSIGNABLE_ROLES = ["admin", "accountant", "staff"]
+
+
+class TeamMemberCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+    role = serializers.ChoiceField(choices=ASSIGNABLE_ROLES)
+
+    class Meta:
+        model = User
+        fields = ["id", "email", "password", "first_name", "last_name",
+                  "phone_number", "role"]
+        read_only_fields = ["id"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+    def create(self, validated_data):
+        return User.objects.create_user(**validated_data)
+
+
+class TeamMemberUpdateSerializer(serializers.ModelSerializer):
+    role = serializers.ChoiceField(choices=ASSIGNABLE_ROLES, required=False)
+
+    class Meta:
+        model = User
+        fields = ["role", "is_active"]
+
+
 class RegisterSerializer(serializers.Serializer):
     # User fields
     email = serializers.EmailField()

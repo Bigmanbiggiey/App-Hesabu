@@ -1,6 +1,15 @@
+from decimal import Decimal, ROUND_HALF_UP
+
 from django.db import models
 from django.core.exceptions import ValidationError
 from apps.core.models import BaseModel
+
+TWO_PLACES = Decimal("0.01")
+
+
+def _money(value) -> Decimal:
+    """Coerce anything numeric to a 2dp Decimal, safely (handles float input)."""
+    return Decimal(str(value)).quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
 
 
 class VATClass(models.TextChoices):
@@ -82,7 +91,9 @@ class Invoice(BaseModel):
     notes = models.TextField(blank=True)
     terms = models.TextField(blank=True)
 
-    # eTIMS fields — immutable state machine (enforced by DB trigger via migration)
+    # eTIMS fields. Once etims_status == "accepted" the fiscal fields are
+    # frozen: enforced in the API by InvoiceSerializer/perform_destroy and at
+    # the database level by the triggers in migration 0003 (PostgreSQL only).
     etims_status = models.CharField(
         max_length=20, choices=EtimsStatus.choices, default=EtimsStatus.PENDING
     )
@@ -106,16 +117,57 @@ class Invoice(BaseModel):
         ordering = ["-invoice_date", "-created_at"]
         unique_together = [["organization", "invoice_number"]]
 
+    # eTIMS states past which the invoice is considered fiscalised / frozen.
+    LOCKED_ETIMS_STATUSES = ("submitted", "accepted")
+
     def __str__(self):
         return f"{self.invoice_number} — {self.customer.name}"
 
+    @property
+    def period_locked(self) -> bool:
+        return self.tax_period_id is not None and self.tax_period.status != "open"
+
+    @property
+    def etims_locked(self) -> bool:
+        return self.etims_status in self.LOCKED_ETIMS_STATUSES
+
+    def lock_reason(self):
+        """Human-readable reason this invoice may not be modified, or None."""
+        if self.period_locked:
+            return "belongs to a filed tax period"
+        if self.etims_locked:
+            return "has been submitted to KRA eTIMS"
+        return None
+
     def recalculate_totals(self):
         items = self.line_items.all()
-        self.subtotal = sum(item.line_total for item in items)
-        self.vat_amount = sum(item.vat_amount for item in items)
+        self.subtotal = sum((item.line_total for item in items), Decimal("0"))
+        self.vat_amount = sum((item.vat_amount for item in items), Decimal("0"))
         self.total_amount = self.subtotal + self.vat_amount - self.wht_amount
         self.amount_due = self.total_amount - self.amount_paid
         self.save(update_fields=["subtotal", "vat_amount", "total_amount", "amount_due"])
+
+    def reconcile_payments(self):
+        """
+        Recompute amount_paid / amount_due from the Payment rows and move the
+        status within the live states only. Idempotent — safe to call after a
+        payment is created, edited, moved to another invoice, or deleted.
+        """
+        total_paid = self.payments.aggregate(t=models.Sum("amount"))["t"] or Decimal("0")
+        self.amount_paid = total_paid
+        self.amount_due = self.total_amount - total_paid
+
+        if self.status not in (InvoiceStatus.DRAFT, InvoiceStatus.CANCELLED):
+            if total_paid <= 0:
+                # A removed/void payment must not leave the invoice "paid".
+                if self.status in (InvoiceStatus.PAID, InvoiceStatus.PARTIAL):
+                    self.status = InvoiceStatus.SENT
+            elif self.amount_due <= 0:
+                self.status = InvoiceStatus.PAID
+            else:
+                self.status = InvoiceStatus.PARTIAL
+
+        self.save(update_fields=["amount_paid", "amount_due", "status"])
 
 
 class InvoiceLineItem(BaseModel):
@@ -140,11 +192,11 @@ class InvoiceLineItem(BaseModel):
         ordering = ["created_at"]
 
     def save(self, *args, **kwargs):
-        self.line_total = self.quantity * self.unit_price
+        self.line_total = _money(Decimal(str(self.quantity)) * Decimal(str(self.unit_price)))
         if self.vat_class == VATClass.STANDARD:
-            self.vat_rate = 16.00
-            self.vat_amount = self.line_total * (self.vat_rate / 100)
+            self.vat_rate = Decimal("16.00")
+            self.vat_amount = _money(self.line_total * self.vat_rate / Decimal("100"))
         else:
-            self.vat_rate = 0
-            self.vat_amount = 0
+            self.vat_rate = Decimal("0")
+            self.vat_amount = Decimal("0")
         super().save(*args, **kwargs)

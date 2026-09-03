@@ -16,8 +16,11 @@ class PeriodStatus(models.TextChoices):
 
 class TaxPeriod(BaseModel):
     """
-    A tax filing period. Once locked, no invoices in that period can be modified.
-    The lock is enforced by a PostgreSQL trigger created in the migration.
+    A tax filing period. Locking a VAT period stamps every invoice dated in
+    that month with ``tax_period`` and closes it; from then on those invoices
+    (and their line items) are immutable. Enforced in the API layer
+    (apps.invoices serializers/views) and, on PostgreSQL, by the database
+    triggers in ``invoices`` migration 0003.
     """
 
     organization = models.ForeignKey(
@@ -42,10 +45,24 @@ class TaxPeriod(BaseModel):
         return f"{self.organization.name} — {self.get_period_type_display()} {self.year}/{self.month:02d}"
 
     def lock(self):
+        from django.db import transaction
         from django.utils import timezone
-        self.status = PeriodStatus.CLOSED
-        self.locked_at = timezone.now()
-        self.save(update_fields=["status", "locked_at"])
+
+        with transaction.atomic():
+            self.status = PeriodStatus.CLOSED
+            self.locked_at = timezone.now()
+            self.save(update_fields=["status", "locked_at"])
+
+            # Associate the invoices this VAT return covers so they become
+            # immutable. (PAYE periods don't touch invoices.)
+            if self.period_type == PeriodType.VAT:
+                from apps.invoices.models import Invoice
+
+                Invoice.objects.filter(
+                    organization=self.organization,
+                    invoice_date__year=self.year,
+                    invoice_date__month=self.month,
+                ).update(tax_period=self)
 
 
 class VATReturn(BaseModel):

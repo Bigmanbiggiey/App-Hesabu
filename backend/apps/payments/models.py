@@ -100,13 +100,7 @@ class Payment(BaseModel):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        # Update invoice amount_paid and amount_due
-        invoice = self.invoice
-        total_paid = sum(p.amount for p in invoice.payments.all())
-        invoice.amount_paid = total_paid
-        invoice.amount_due = invoice.total_amount - total_paid
-        if invoice.amount_due <= 0:
-            invoice.status = "paid"
-        elif invoice.amount_paid > 0:
-            invoice.status = "partial"
-        invoice.save(update_fields=["amount_paid", "amount_due", "status"])
+        # Re-derive the invoice balance/status from all its payments.
+        from apps.invoices.models import Invoice
+
+        Invoice.objects.get(pk=self.invoice_id).reconcile_payments()
