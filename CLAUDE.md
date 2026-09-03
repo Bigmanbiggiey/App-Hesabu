@@ -58,6 +58,8 @@ All models inherit `apps.core.models.BaseModel`: UUID primary key + `created_at`
 
 Three tiers (`SubscriptionTier` in `accounts/models.py`, limits in `apps/billing/limits.py`): `biashara` (2,500 KES/mo, capped at 100 invoices/month & 5 users), `kampuni` (6,500 KES/mo, 15 users, unlimited invoices), `shirika` (15,000 KES/mo, unlimited). `check_invoice_limit(org)` / `check_user_limit(org)` raise DRF `PermissionDenied` and should be called before creating invoices/users.
 
+Monthly counts (invoice limit, `billing_status` usage, dashboard/report aggregates) all bucket invoices by **`invoice_date`**, not `created_at`, so an invoice always counts toward the same month as the VAT `TaxPeriod` it belongs to.
+
 ### App boundaries
 
 - `apps/accounts` — `Organization`, `User`, auth endpoints (JWT via `simplejwt`).

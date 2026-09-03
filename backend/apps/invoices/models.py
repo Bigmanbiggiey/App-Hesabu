@@ -147,6 +147,28 @@ class Invoice(BaseModel):
         self.amount_due = self.total_amount - self.amount_paid
         self.save(update_fields=["subtotal", "vat_amount", "total_amount", "amount_due"])
 
+    def reconcile_payments(self):
+        """
+        Recompute amount_paid / amount_due from the Payment rows and move the
+        status within the live states only. Idempotent — safe to call after a
+        payment is created, edited, moved to another invoice, or deleted.
+        """
+        total_paid = self.payments.aggregate(t=models.Sum("amount"))["t"] or Decimal("0")
+        self.amount_paid = total_paid
+        self.amount_due = self.total_amount - total_paid
+
+        if self.status not in (InvoiceStatus.DRAFT, InvoiceStatus.CANCELLED):
+            if total_paid <= 0:
+                # A removed/void payment must not leave the invoice "paid".
+                if self.status in (InvoiceStatus.PAID, InvoiceStatus.PARTIAL):
+                    self.status = InvoiceStatus.SENT
+            elif self.amount_due <= 0:
+                self.status = InvoiceStatus.PAID
+            else:
+                self.status = InvoiceStatus.PARTIAL
+
+        self.save(update_fields=["amount_paid", "amount_due", "status"])
+
 
 class InvoiceLineItem(BaseModel):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="line_items")

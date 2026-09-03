@@ -60,6 +60,19 @@ class PaymentSerializer(serializers.ModelSerializer):
         validated_data["organization"] = self.context["request"].organization
         return super().create(validated_data)
 
+    def update(self, instance, validated_data):
+        previous_invoice_id = instance.invoice_id
+        payment = super().update(instance, validated_data)
+        # Payment.save() reconciles the (new) invoice; if the payment was
+        # moved off another invoice, reconcile that one too.
+        if payment.invoice_id != previous_invoice_id:
+            from apps.invoices.models import Invoice
+
+            old = Invoice.objects.filter(pk=previous_invoice_id).first()
+            if old is not None:
+                old.reconcile_payments()
+        return payment
+
 
 class DarajaC2BCallbackSerializer(serializers.Serializer):
     """Validates the incoming Safaricom Daraja C2B webhook payload."""

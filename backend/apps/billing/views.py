@@ -69,8 +69,8 @@ def billing_status(request):
 
     invoices_this_month = Invoice.objects.filter(
         organization=org,
-        created_at__year=now.year,
-        created_at__month=now.month,
+        invoice_date__year=now.year,
+        invoice_date__month=now.month,
     ).count()
     active_users = User.objects.filter(organization=org, is_active=True).count()
 

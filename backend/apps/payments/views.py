@@ -166,3 +166,8 @@ class PaymentViewSet(viewsets.ModelViewSet):
         return Payment.objects.filter(
             organization=self.request.organization
         ).select_related("invoice", "mpesa_transaction")
+
+    def perform_destroy(self, instance):
+        invoice = instance.invoice
+        instance.delete()
+        invoice.reconcile_payments()

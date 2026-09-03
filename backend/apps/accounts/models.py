@@ -1,6 +1,6 @@
 import uuid
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
-from django.db import models
+from django.db import models, transaction
 from apps.core.models import BaseModel
 
 
@@ -86,9 +86,18 @@ class Organization(BaseModel):
         return f"{self.name} ({self.kra_pin})"
 
     def next_invoice_number(self):
-        self.invoice_sequence += 1
-        self.save(update_fields=["invoice_sequence"])
-        return f"{self.invoice_prefix}-{self.invoice_sequence:05d}"
+        """
+        Atomically allocate the next invoice number. The row is locked with
+        SELECT ... FOR UPDATE so two concurrent invoice creations cannot read
+        the same sequence value and collide on the
+        (organization, invoice_number) unique constraint.
+        """
+        with transaction.atomic():
+            org = Organization.objects.select_for_update().get(pk=self.pk)
+            org.invoice_sequence += 1
+            org.save(update_fields=["invoice_sequence"])
+        self.invoice_sequence = org.invoice_sequence
+        return f"{org.invoice_prefix}-{org.invoice_sequence:05d}"
 
 
 class UserRole(models.TextChoices):
