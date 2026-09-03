@@ -20,12 +20,18 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {
 }
 
 # ── Database ──────────────────────────────────────────────────────────────────
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": ":memory:",
+# Default: in-memory SQLite (no services needed). CI sets TEST_DATABASE_URL to
+# a PostgreSQL DSN so the @pytest.mark.postgres trigger tests actually run.
+_test_db_url = env("TEST_DATABASE_URL", default="")
+if _test_db_url:
+    DATABASES = {"default": env.db_url_config(_test_db_url)}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
     }
-}
 
 # ── Speed ─────────────────────────────────────────────────────────────────────
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
