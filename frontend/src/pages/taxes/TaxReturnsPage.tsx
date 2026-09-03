@@ -458,9 +458,6 @@ function PAYEPeriodsTab() {
   const { data: periodsData, isLoading } = useTaxPeriods({ period_type: "paye", page_size: "50" });
   const { mutate: generate, isPending: generating, variables: genVar } = useGeneratePAYEReturns();
   const { mutate: lockPeriod, isPending: locking, variables: lockVar } = useLockPeriod();
-  const { data: payeData } = usePAYEReturns(
-    viewPeriod ? { tax_period: viewPeriod.id } : undefined
-  );
 
   const periods = periodsData?.results ?? [];
 

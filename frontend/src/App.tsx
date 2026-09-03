@@ -3,7 +3,6 @@ import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/layout/Layout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
-import DashboardPage from "@/pages/dashboard/DashboardPage";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();

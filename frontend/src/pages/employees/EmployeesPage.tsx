@@ -370,7 +370,7 @@ export default function EmployeesPage() {
   const [showCalc, setShowCalc] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
 
-  const params = showInactive ? {} : { is_active: "true" };
+  const params: Record<string, string> = showInactive ? {} : { is_active: "true" };
   const { data, isLoading } = useEmployees(params);
   const { mutateAsync: createEmployee } = useCreateEmployee();
   const { mutateAsync: updateEmployee } = useUpdateEmployee();
