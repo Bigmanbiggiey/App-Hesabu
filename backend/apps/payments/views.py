@@ -1,5 +1,8 @@
 import logging
+from datetime import datetime
+
 from dateutil import parser as date_parser
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -16,6 +19,26 @@ from .serializers import (
 from .tasks import reconcile_mpesa_payment
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_daraja_timestamp(raw):
+    """
+    Daraja sends ``TransTime`` as ``YYYYMMDDHHMMSS`` in East Africa Time.
+    Return a timezone-aware datetime (settings.TIME_ZONE = Africa/Nairobi);
+    fall back to now() if it can't be parsed rather than storing a naive value.
+    """
+    dt = None
+    try:
+        dt = datetime.strptime(str(raw), "%Y%m%d%H%M%S")
+    except (ValueError, TypeError):
+        try:
+            dt = date_parser.parse(str(raw))
+        except (ValueError, TypeError, OverflowError):
+            logger.warning("Unparseable Daraja TransTime %r — using now()", raw)
+            return timezone.now()
+    if timezone.is_naive(dt):
+        dt = timezone.make_aware(dt)
+    return dt
 
 
 @api_view(["POST"])
@@ -59,7 +82,7 @@ def mpesa_c2b_callback(request):
             "last_name": data["LastName"],
             "bill_ref_number": data["BillRefNumber"],
             "business_short_code": shortcode,
-            "transaction_time": date_parser.parse(data["TransTime"]),
+            "transaction_time": _parse_daraja_timestamp(data["TransTime"]),
             "raw_payload": request.data,
         },
     )

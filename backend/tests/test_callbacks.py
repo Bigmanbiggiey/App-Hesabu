@@ -7,6 +7,7 @@
 from decimal import Decimal
 
 import pytest
+from django.utils import timezone as django_timezone
 
 from apps.accounts.models import Organization
 from apps.billing.models import BillingStatus
@@ -71,7 +72,11 @@ def test_c2b_accepts_allowlisted_ip(api_client, settings):
         C2B_URL, _c2b_payload("600123"), format="json", REMOTE_ADDR="196.201.214.55"
     )
     assert resp.status_code == 200
-    assert MpesaTransaction.objects.filter(mpesa_receipt_number="RAA00000001").exists()
+    txn = MpesaTransaction.objects.get(mpesa_receipt_number="RAA00000001")
+    # TransTime "20260903120000" must be stored tz-aware (interpreted as EAT).
+    assert txn.transaction_time.tzinfo is not None
+    local = django_timezone.localtime(txn.transaction_time)
+    assert (local.year, local.month, local.day, local.hour) == (2026, 9, 3, 12)
 
 
 def test_c2b_allowlist_disabled_when_unset(api_client, settings):
