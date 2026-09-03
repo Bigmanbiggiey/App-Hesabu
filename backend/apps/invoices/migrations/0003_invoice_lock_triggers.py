@@ -115,13 +115,18 @@ DROP FUNCTION IF EXISTS hesabu_guard_invoice_mutation();
 def apply_triggers(apps, schema_editor):
     if schema_editor.connection.vendor != "postgresql":
         return
-    schema_editor.execute(FORWARD_SQL)
+    # Use a raw cursor, not schema_editor.execute(): the latter runs the SQL
+    # through psycopg mogrification, which treats the literal '%' in the
+    # RAISE EXCEPTION format strings as parameter placeholders and blows up.
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(FORWARD_SQL)
 
 
 def drop_triggers(apps, schema_editor):
     if schema_editor.connection.vendor != "postgresql":
         return
-    schema_editor.execute(REVERSE_SQL)
+    with schema_editor.connection.cursor() as cursor:
+        cursor.execute(REVERSE_SQL)
 
 
 class Migration(migrations.Migration):
