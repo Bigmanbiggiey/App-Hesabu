@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.accounts.models import Organization
+from apps.billing.models import BillingTransaction
 from apps.invoices.models import Customer, Invoice, InvoiceLineItem
 from apps.payments.models import MpesaTransaction
 
@@ -91,3 +92,16 @@ class MpesaTransactionFactory(factory.django.DjangoModelFactory):
     transaction_time = factory.LazyFunction(timezone.now)
     raw_payload = factory.LazyFunction(dict)
     reconciliation_status = "unallocated"
+
+
+class BillingTransactionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = BillingTransaction
+
+    organization = factory.SubFactory(OrganizationFactory)
+    amount = Decimal("6500.00")
+    currency = "KES"
+    payment_gateway = "mpesa"
+    mpesa_checkout_request_id = factory.Sequence(lambda n: f"ws_CO_{n}")
+    status = "pending"
+    plan_tier = "kampuni"

@@ -1,3 +1,5 @@
+from decimal import Decimal, InvalidOperation
+
 from rest_framework import serializers
 from .models import MpesaTransaction, Payment
 
@@ -75,3 +77,12 @@ class DarajaC2BCallbackSerializer(serializers.Serializer):
     FirstName = serializers.CharField(allow_blank=True, default="")
     MiddleName = serializers.CharField(allow_blank=True, default="")
     LastName = serializers.CharField(allow_blank=True, default="")
+
+    def validate_TransAmount(self, value):
+        try:
+            amount = Decimal(str(value))
+        except (InvalidOperation, TypeError):
+            raise serializers.ValidationError("Invalid amount.")
+        if amount <= 0:
+            raise serializers.ValidationError("Amount must be positive.")
+        return value

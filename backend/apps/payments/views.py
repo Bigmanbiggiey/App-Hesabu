@@ -5,6 +5,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core.decorators import daraja_ip_allowlist
 from apps.core.permissions import IsAccountant
 from .models import MpesaTransaction, Payment, ReconciliationStatus
 from .serializers import (
@@ -19,10 +20,15 @@ logger = logging.getLogger(__name__)
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@daraja_ip_allowlist
 def mpesa_c2b_callback(request):
     """
     Safaricom Daraja C2B webhook endpoint.
-    Must be publicly accessible (no auth). Validated by shortcode matching.
+
+    Unauthenticated by necessity (Safaricom calls it), so it is protected by
+    a source-IP allowlist (DARAJA_ALLOWED_IPS) plus payload validation and
+    shortcode->organisation matching. Amount is validated (> 0) by the
+    serializer; TransID gives idempotency via get_or_create.
     """
     serializer = DarajaC2BCallbackSerializer(data=request.data)
     if not serializer.is_valid():

@@ -17,6 +17,10 @@ CSRF_TRUSTED_ORIGINS = env.list(
     "CSRF_TRUSTED_ORIGINS", default=["https://hesabu.techbiggiey.org"]
 )
 
+# Caddy terminates TLS and sets X-Forwarded-For, so the M-Pesa callback IP
+# allowlist must read the client IP from that header.
+DARAJA_TRUST_FORWARDED_FOR = env.bool("DARAJA_TRUST_FORWARDED_FOR", default=True)
+
 # ── Static files ──────────────────────────────────────────────────────────────
 # nginx serves /media/ directly (django.conf.urls.static.static() is a no-op
 # once DEBUG=False); whitenoise serves /static/ from inside gunicorn, reached

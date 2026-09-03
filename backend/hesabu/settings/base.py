@@ -176,6 +176,14 @@ DARAJA_PASSKEY = env("DARAJA_PASSKEY", default="")
 DARAJA_CALLBACK_URL     = env("DARAJA_CALLBACK_URL",     default="")
 DARAJA_STK_CALLBACK_URL = env("DARAJA_STK_CALLBACK_URL", default="")
 
+# Source-IP allowlist for the unauthenticated M-Pesa callback endpoints.
+# List of IPs / CIDRs (Safaricom's published callback ranges). Empty = check
+# disabled (dev/sandbox). DARAJA_TRUST_FORWARDED_FOR must be True when a
+# reverse proxy (Caddy/nginx) fronts the app so the real client IP is read
+# from X-Forwarded-For.
+DARAJA_ALLOWED_IPS = env.list("DARAJA_ALLOWED_IPS", default=[])
+DARAJA_TRUST_FORWARDED_FOR = env.bool("DARAJA_TRUST_FORWARDED_FOR", default=False)
+
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 STRIPE_SECRET_KEY      = env("STRIPE_SECRET_KEY",      default="")
 STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", default="")
