@@ -57,7 +57,7 @@ npm run dev
 
 Currently deployed to Vercel as two services defined in `vercel.json`: the Vite frontend at `/` and the Django backend at `/_/backend` (`frontend/` and `backend/` roots respectively).
 
-**Migration in progress**: Hesabu is moving to self-hosting on `server-biggiey`, alongside the team's other projects (`essenshea`, `educore`), served at `hesabu.techbiggiey.org` via Cloudflare Tunnel + Caddy, running as Docker containers (nginx, Django backend, Postgres, Redis, Celery worker/beat) defined in `docker-compose.prod.yml`. See `CLAUDE.md` for the full architecture and what's still pending server-side. Until the cutover is confirmed live, Vercel remains the active deployment.
+**Migration in progress**: Hesabu is moving to self-hosting on a shared AWS EC2 host (ARM64), as a fully self-contained Docker Compose project defined in `docker-compose.prod.yml`: nginx, Django backend, Postgres, Redis, Celery worker/beat, and its own Cloudflare Tunnel connector (`cloudflared`) for public HTTPS. The host runs other people's projects, so the stack publishes no host ports and touches nothing outside itself. See `CLAUDE.md` for the full architecture and what's still pending. Until the cutover is confirmed live, Vercel remains the active deployment.
 
 #### Testing the production stack locally
 
@@ -79,31 +79,32 @@ DB_PORT=5432
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/0
 FRONTEND_URL=http://localhost:8080
+CLOUDFLARE_TUNNEL_TOKEN=unused-locally
+HESABU_ENV_FILE=.env.prod.local
 EOF
 
-# docker-compose.prod.local.yml — publishes a host port and makes the
-# server's external Caddy network a plain local one instead, git-ignored
+# docker-compose.prod.local.yml — publishes a host port (the real server
+# publishes none), git-ignored
 cat > docker-compose.prod.local.yml <<'EOF'
 services:
   frontend:
     ports:
       - "8080:80"
-networks:
-  server_backend:
-    external: false
 EOF
 
-docker compose -f docker-compose.prod.yml -f docker-compose.prod.local.yml --env-file .env.prod.local up --build
+docker compose -f docker-compose.prod.yml -f docker-compose.prod.local.yml --env-file .env.prod.local up --build --scale cloudflared=0
 ```
 
 Then check: `http://localhost:8080/` (React shell), `http://localhost:8080/api/v1/auth/token/refresh/` (JSON, not an nginx error page), `http://localhost:8080/admin/` (styled login page — confirms whitenoise), and that an uploaded `Organization.logo` is reachable at `http://localhost:8080/media/logos/<file>`. Tear down with `docker compose -f docker-compose.prod.yml -f docker-compose.prod.local.yml down -v`.
 
 #### Deploying (once the server-side cutover is done)
 
+Run on the server, from Hesabu's own directory only. Never run `docker system/image/volume/builder prune` (the build cache and buildx builders belong to other tenants), and pin the default builder so the build doesn't land on another tenant's buildx builder:
+
 ```bash
-ssh -i ~/.ssh/essenshea_biggiey biggiey@server-biggiey.tailfbb86e.ts.net
-cd /srv/docker/apps/hesabu && git pull
-docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+cd ~/hesabu && git pull
+BUILDX_BUILDER=default docker compose -f docker-compose.prod.yml --env-file .env build
+docker compose -f docker-compose.prod.yml --env-file .env up -d
 docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser   # first deploy only
 ```
 

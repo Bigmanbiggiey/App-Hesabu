@@ -14,7 +14,7 @@ def _client_ip(request) -> str:
     """
     Best-effort client IP.
 
-    Behind Caddy/nginx ``REMOTE_ADDR`` is the proxy, so when
+    Behind nginx ``REMOTE_ADDR`` is the proxy, so when
     ``DARAJA_TRUST_FORWARDED_FOR`` is set we take the last hop from
     ``X-Forwarded-For`` (the entry the trusted proxy appended).
     """
@@ -43,8 +43,8 @@ def daraja_ip_allowlist(view_func):
 
     If the setting is empty the check is disabled (and logged loudly) so
     local/sandbox testing keeps working — production MUST populate it, and
-    the shared Caddy allowlist should enforce the same set as defence in
-    depth.
+    an edge rule (e.g. a Cloudflare WAF rule on the callback paths) can
+    enforce the same set as defence in depth.
     """
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):

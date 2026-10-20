@@ -12,7 +12,8 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS")
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS")
 
 # ── Security ──────────────────────────────────────────────────────────────────
-# Caddy terminates TLS and proxies plain HTTP to this container.
+# Cloudflare terminates TLS; cloudflared -> nginx proxy plain HTTP to this
+# container, with nginx always setting X-Forwarded-Proto: https.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
@@ -22,8 +23,8 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 X_FRAME_OPTIONS = "DENY"
 
-# Caddy terminates TLS and sets X-Forwarded-For, so the M-Pesa callback IP
-# allowlist must read the client IP from that header.
+# nginx sets X-Forwarded-For to the real client IP (from CF-Connecting-IP),
+# so the M-Pesa callback IP allowlist must read the client IP from that header.
 DARAJA_TRUST_FORWARDED_FOR = env.bool("DARAJA_TRUST_FORWARDED_FOR", default=True)
 
 # ── Static files ──────────────────────────────────────────────────────────────

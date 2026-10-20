@@ -90,15 +90,31 @@ All external credentials live in `backend/.env` (see `.env.example` for the full
 
 ### Deployment
 
-Hesabu is moving off Vercel (`vercel.json`, currently still in the repo) to self-hosting on **server-biggiey**, following the same pattern already used there for `essenshea` and `educore`. The repo-side pieces now exist; the server-side cutover is still pending.
+Hesabu is moving off Vercel (`vercel.json`, still in the repo and still the live deployment) to self-hosting on a **shared AWS EC2 host**. The repo-side pieces exist; the server-side cutover is pending.
 
-- Host: `server-biggiey` (Ubuntu 26.04, reachable over Tailscale at `100.72.18.28` / `server-biggiey.tailfbb86e.ts.net`).
-- Target path: `/srv/docker/apps/hesabu/`. Two compose files: the existing `docker-compose.yml` (dev-only — Postgres + Redis on the host, used by `setup.sh`/`start.sh`) and the new `docker-compose.prod.yml` (full stack, repo root).
-- `docker-compose.prod.yml` defines 6 services, all internal-only (no published host ports): `db` (`hesabu-db-1`, postgres:16-alpine), `redis` (`hesabu-redis-1`), `backend` (`hesabu-backend-1`, gunicorn via `backend/Dockerfile`), `celery-worker` (`hesabu-celery-worker-1`), `celery-beat` (`hesabu-celery-beat-1`), `frontend` (`hesabu-nginx-1`, built from `frontend/Dockerfile`, nginx serving the built SPA + reverse-proxying `/api/`, `/admin/`, `/static/` to the backend). Only `frontend` joins the external `server_backend` network so Caddy can reach it by container name — **that network name is assumed from a `docker network ls` snapshot and needs on-server confirmation before first deploy.**
-- `backend/hesabu/settings/production.py` extends `base.py`: `DEBUG=False`, `SECURE_PROXY_SSL_HEADER` (Caddy terminates TLS), HSTS/secure-cookie hardening, `CSRF_TRUSTED_ORIGINS`, and whitenoise for `/static/` (`STORAGES["staticfiles"]`). Selected via `DJANGO_SETTINGS_MODULE=hesabu.settings.production` in `docker-compose.prod.yml`'s `environment:`, not baked into the image.
-- **Media files**: `django.conf.urls.static.static()` (used in `hesabu/urls.py`) is a no-op once `DEBUG=False`, so Django itself won't serve `/media/` in production. Instead, `backend`/`celery-*` and `frontend` share a `hesabu_media` named volume, and `frontend/nginx.conf` serves `/media/` directly from it (read-only). This only matters for `Organization.logo` (`apps/accounts/models.py`) — the only persisted media field in the app; invoice PDFs are generated in-memory per request (`apps/invoices/pdf.py`) and never touch disk.
-- `backend/docker-entrypoint.sh` runs `migrate`/`collectstatic` only when the container's command is `gunicorn`, so `celery-worker`/`celery-beat` (same image, different `command:`) don't race migrations on every restart.
-- Public ingress: **`hesabu.techbiggiey.org`**, to be added to the box's Cloudflare Tunnel config (`/home/biggiey/.cloudflared/config.yml`) and the shared Caddy reverse proxy (`/srv/docker/infrastructure/caddy/Caddyfile`) by Host header — same mechanism as `educore-admin.techbiggiey.org` / `essenshea-demo.techbiggiey.org`. **Not yet added** — requires the out-of-scope SSH follow-up below.
-- Deploy access: SSH key `~/.ssh/essenshea_biggiey` (ed25519, comment `essenshea-demo-deploy`) on this machine — reused for server-biggiey access generally, not Hesabu-specific. No `~/.ssh/config` host alias exists for it yet.
+- Host: EC2 **t4g.large** (us-east-2): **ARM64**, 2 vCPU, 7.6 GiB RAM, **no swap**, Ubuntu 24.04, Docker 28 + Compose v2.34. SSH as `ubuntu` (key-only). No Tailscale. Hostname `ip-172-31-13-28`, public IP `3.136.181.88`. The planned directory is `~/hesabu` (or `/srv/hesabu`).
+- **The host is shared with projects that aren't ours, and Hesabu must never touch them.** That covers host nginx on 80/443 (Jenkins at `jenkins.albisai.com`, certbot), Jenkins (8080/50000), the `devops-copilot` compose project (port 8000, network `devops-copilot_default` 172.18/16), and 7 `buildx_buildkit_*` builders plus their volumes and build cache. Never prune Docker resources, never edit `/etc/nginx`, `/etc/docker` or the host firewall, and never use another tenant's buildx builder (build with `BUILDX_BUILDER=default`).
+- `docker-compose.prod.yml` is therefore fully self-contained:
+  - `name: hesabu`, 7 services, **no published host ports, no external networks**.
+  - Its own network is pinned to `172.30.0.0/24`.
+  - Every service has a `mem_limit`, because there is no swap and other tenants' builds spike memory.
+  - Every service has per-service json-file log rotation (the daemon doesn't rotate logs).
+  - gunicorn runs 2 workers and Celery concurrency is 2, sized for 2 shared vCPUs.
+  - Services: `db` (postgres:16-alpine), `redis`, `backend` (gunicorn), `celery-worker`, `celery-beat`, `frontend` (`hesabu-nginx-1`, SPA + reverse proxy for `/api/`, `/admin/`, `/static/`), and `cloudflared`.
+- **Ingress is Hesabu's own Cloudflare Tunnel.** The `cloudflared` container dials out to Cloudflare (outbound 7844 is confirmed open) using `CLOUDFLARE_TUNNEL_TOKEN` from `.env`. The tunnel's public hostname routes to `http://hesabu-nginx-1:80`. Cloudflare terminates TLS. Nothing listens on the host.
+- **Client IP chain:** client → Cloudflare edge → cloudflared → nginx → gunicorn. `frontend/nginx.conf` trusts `CF-Connecting-IP` only from `172.30.0.0/24` (realip module) and sends Django `X-Forwarded-For: $remote_addr`, a single trusted IP that overwrites rather than appends. `apps/core/decorators.py`'s M-Pesa callback allowlist reads the last XFF hop, so if nginx appended instead, every Safaricom callback would be rejected as coming from cloudflared's container IP. Keep the subnet in `nginx.conf` and in the compose network in sync.
+- `backend/hesabu/settings/production.py` extends `base.py` with `DEBUG=False`, `SECURE_PROXY_SSL_HEADER` (nginx always sends `X-Forwarded-Proto: https`), HSTS and secure cookies, required `ALLOWED_HOSTS`/`CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS`, and whitenoise for `/static/`. It is selected via the compose `environment:` and not baked into the image.
+- **Media files:** `static()` in `hesabu/urls.py` is a no-op when `DEBUG=False`. `backend`/`celery-worker` and `frontend` share the `hesabu_media` volume, and nginx serves `/media/` from it. Only `Organization.logo` is persisted; invoice PDFs are generated in memory.
+- `backend/docker-entrypoint.sh` runs `migrate`/`collectstatic` only when the command starts with `gunicorn`. Celery services wait for `backend` to be healthy.
+- Images are built **natively on the server** (arm64). There is no registry and no cross-build.
 
-**Still pending** (requires live SSH access to server-biggiey, not yet done): confirming the `server_backend` network name, adding the Caddy `@hesabu` route block and the Cloudflare Tunnel ingress entry, cloning the repo to `/srv/docker/apps/hesabu/` with a real production `.env` (see `.env.example`'s "Production overrides" comment block for what changes), and running `docker compose -f docker-compose.prod.yml --env-file .env up -d --build`. `vercel.json` stays the active deployment until that cutover is confirmed live — see `README.md` for the local build/verify commands.
+**Still pending:**
+- the public domain, on a Cloudflare account we control
+- creating the tunnel and its public-hostname route
+- SSH access from this machine
+- the production `.env` (see `.env.example` "Production overrides")
+- the first `build` + `up -d` + `createsuperuser`
+- pointing the Daraja/Stripe callbacks at the new domain
+- DB backups. The host's AWS CLI creds are invalid, so off-box backups need new creds or another destination.
+
+Then retire `vercel.json`. See `README.md` for local verification and deploy commands.

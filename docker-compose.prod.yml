@@ -1,6 +1,24 @@
+# Production stack — fully self-contained. The host is shared with projects
+# that aren't ours (host nginx on 80/443, Jenkins, devops-copilot), so this
+# file publishes NO host ports, joins NO external networks, and brings its own
+# ingress (a Cloudflare Tunnel connector, `cloudflared` below). See CLAUDE.md
+# "Deployment" for the host constraints these settings are sized against.
+name: hesabu
+
+# No swap on the host and other tenants' builds spike memory, so every service
+# is capped; json-file logs aren't rotated by the daemon, so rotate per service.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
 x-backend-build: &backend-build
   build: ./backend
-  env_file: .env
+  image: hesabu-backend:latest
+  # The server uses ./.env; local smoke tests point this at .env.prod.local.
+  env_file: ${HESABU_ENV_FILE:-.env}
   environment:
     DJANGO_SETTINGS_MODULE: hesabu.settings.production
   depends_on:
@@ -8,6 +26,8 @@ x-backend-build: &backend-build
       condition: service_healthy
     redis:
       condition: service_healthy
+  restart: unless-stopped
+  <<: *logging
 
 services:
   db:
@@ -24,60 +44,97 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    mem_limit: 384m
     restart: unless-stopped
+    <<: *logging
 
   redis:
     image: redis:7-alpine
     container_name: hesabu-redis-1
+    command: redis-server --maxmemory 96mb --maxmemory-policy noeviction
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    mem_limit: 128m
     restart: unless-stopped
+    <<: *logging
 
   backend:
     <<: *backend-build
     container_name: hesabu-backend-1
+    # 2 vCPU shared with Jenkins builds — keep the worker count small.
+    command: gunicorn hesabu.wsgi:application --bind 0.0.0.0:8000 --workers 2 --timeout 60
     volumes:
       - hesabu_media:/app/media
-    restart: unless-stopped
+    healthcheck:
+      # TCP check: an HTTP probe would hit SECURE_SSL_REDIRECT without the
+      # proxy's X-Forwarded-Proto header.
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), 3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    mem_limit: 512m
 
   celery-worker:
     <<: *backend-build
     container_name: hesabu-celery-worker-1
-    command: celery -A hesabu worker -l info
+    command: celery -A hesabu worker -l info --concurrency 2
     volumes:
       - hesabu_media:/app/media
     depends_on:
-      - backend
-    restart: unless-stopped
+      backend:
+        condition: service_healthy
+    mem_limit: 384m
 
   celery-beat:
     <<: *backend-build
     container_name: hesabu-celery-beat-1
     command: celery -A hesabu beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    mem_limit: 192m
 
   frontend:
     build: ./frontend
+    image: hesabu-frontend:latest
     container_name: hesabu-nginx-1
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     volumes:
       - hesabu_media:/usr/share/nginx/media:ro
-    networks:
-      - default
-      - server_backend
+    mem_limit: 64m
     restart: unless-stopped
+    <<: *logging
+
+  # Hesabu's own ingress: an outbound-only connector to a Cloudflare Tunnel we
+  # own. Cloudflare terminates TLS; the tunnel's public hostname is routed (in
+  # the Cloudflare dashboard) to http://hesabu-nginx-1:80.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.1
+    container_name: hesabu-cloudflared-1
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on:
+      - frontend
+    mem_limit: 64m
+    restart: unless-stopped
+    <<: *logging
 
 volumes:
   hesabu_postgres_data:
   hesabu_media:
 
 networks:
-  # Shared network the on-server Caddy container listens on. Name assumed
-  # from the existing `docker network ls` output on server-biggiey — confirm
-  # before first real deploy (see CLAUDE.md Deployment section).
-  server_backend:
-    external: true
+  # Pinned so it can never collide with Docker's auto-assigned pools (other
+  # tenants already hold 172.17/16 and 172.18/16). frontend/nginx.conf trusts
+  # CF-Connecting-IP only from this subnet.
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
