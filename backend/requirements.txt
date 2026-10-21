@@ -24,6 +24,7 @@ Pillow==11.1.0
 requests==2.32.3
 africastalking==1.2.8
 stripe==11.4.1
+pywebpush==2.0.3
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dateutil==2.9.0

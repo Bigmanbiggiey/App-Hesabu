@@ -19,6 +19,7 @@ urlpatterns = [
     path("api/v1/payments/", include("apps.payments.urls")),
     path("api/v1/taxes/",   include("apps.taxes.urls")),
     path("api/v1/billing/", include("apps.billing.urls")),
+    path("api/v1/notifications/", include("apps.notifications.urls")),
 ]
 
 # django.conf.urls.static.static() is a no-op when DEBUG is False; in

@@ -1,4 +1,5 @@
-import { Menu, Bell, LogOut, User } from "lucide-react";
+import { Menu, LogOut, User } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { useNavigate } from "react-router-dom";
@@ -31,9 +32,7 @@ export default function TopBar({ onMenuClick, title }: TopBarProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <button className="p-2 rounded-lg hover:bg-brand-50 text-muted relative">
-          <Bell className="h-5 w-5" />
-        </button>
+        <NotificationBell />
 
         <div className="flex items-center gap-2 pl-2 border-l border-border">
           <div className="h-8 w-8 rounded-full bg-brand-100 flex items-center justify-center">
@@ -45,7 +44,7 @@ export default function TopBar({ onMenuClick, title }: TopBarProps) {
             </p>
             <p className="text-xs text-muted capitalize">{user?.role}</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="ml-1">
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="ml-1" aria-label="Log out">
             <LogOut className="h-4 w-4" />
           </Button>
         </div>

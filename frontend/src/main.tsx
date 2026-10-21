@@ -10,6 +10,12 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { purgeLegacyApiCache } from "./lib/session";
 import "./lib/pwa"; // starts listening for beforeinstallprompt before React mounts
 
+// The notification panel is a native popover: Baseline only since 2025 (iOS
+// before 18.3 lacks it), so load the polyfill only where it's missing.
+if (!("popover" in HTMLElement.prototype)) {
+  import("@oddbird/popover-polyfill");
+}
+
 purgeLegacyApiCache();
 
 createRoot(document.getElementById("root")!).render(

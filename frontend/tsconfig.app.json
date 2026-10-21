@@ -20,5 +20,7 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // The service worker has WebWorker globals; see tsconfig.sw.json.
+  "exclude": ["src/sw.ts"]
 }

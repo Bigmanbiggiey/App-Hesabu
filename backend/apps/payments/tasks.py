@@ -17,6 +17,8 @@ def reconcile_mpesa_payment(self, transaction_id: str):
     """
     from .models import MpesaTransaction, Payment, ReconciliationStatus
     from apps.invoices.models import Invoice, InvoiceStatus
+    from apps.notifications.models import NotificationKind
+    from apps.notifications.services import format_kes, notify
 
     try:
         txn = MpesaTransaction.objects.select_related("organization").get(id=transaction_id)
@@ -51,6 +53,13 @@ def reconcile_mpesa_payment(self, transaction_id: str):
 
     if not invoice:
         logger.info(f"M-Pesa {txn.mpesa_receipt_number} — no match, left unallocated.")
+        notify(
+            org,
+            NotificationKind.PAYMENT_RECEIVED,
+            "Payment needs allocation",
+            f"{format_kes(amount)} received via M-Pesa but not matched to an invoice.",
+            url="/payments",
+        )
         return
 
     # Determine reconciliation status
@@ -74,6 +83,17 @@ def reconcile_mpesa_payment(self, transaction_id: str):
     logger.info(
         f"M-Pesa {txn.mpesa_receipt_number} ({recon_status}) → {invoice.invoice_number}"
     )
+
+    # Amount + invoice number only: no payer name on a lock screen.
+    if is_full:
+        body = f"{format_kes(amount)} received for {invoice.invoice_number}."
+    else:
+        body = (
+            f"{format_kes(amount)} received for {invoice.invoice_number}; "
+            f"{format_kes(invoice.amount_due - amount)} still due."
+        )
+    notify(org, NotificationKind.PAYMENT_RECEIVED, "M-Pesa payment received", body,
+           url=f"/invoices/{invoice.id}")
 
     # Notify payer via SMS
     if txn.msisdn:

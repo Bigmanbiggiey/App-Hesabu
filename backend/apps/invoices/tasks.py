@@ -12,7 +12,7 @@ def submit_invoice_to_etims(self, invoice_id: str):
     Retries up to 5 times with exponential backoff on transient failures.
     """
     from .models import Invoice, EtimsStatus
-    from .etims import EtimsService
+    from .etims import EtimsRejected, EtimsService
 
     try:
         invoice = Invoice.objects.select_related(
@@ -39,8 +39,78 @@ def submit_invoice_to_etims(self, invoice_id: str):
         )
         logger.info(f"Invoice {invoice_id} accepted by KRA. SCU: {invoice.etims_cu_serial_no}")
 
+    except EtimsRejected as exc:
+        # A definitive refusal: record it and tell the finance team instead of
+        # retrying the same payload (it used to sit at "submitted" forever).
+        invoice.etims_status = EtimsStatus.REJECTED
+        invoice.etims_response = {"resultCd": exc.code, "resultMsg": exc.message}
+        invoice.save(update_fields=["etims_status", "etims_response"])
+        logger.warning(f"Invoice {invoice_id} rejected by KRA: {exc}")
+
+        from apps.notifications.models import NotificationKind
+        from apps.notifications.services import notify
+
+        notify(
+            invoice.organization,
+            NotificationKind.ETIMS_REJECTED,
+            "eTIMS submission rejected",
+            f"KRA rejected {invoice.invoice_number}. Review it and resubmit.",
+            url=f"/invoices/{invoice.id}",
+        )
+
     except Exception as exc:
         invoice.etims_status = EtimsStatus.SUBMITTED
         invoice.save(update_fields=["etims_status"])
         logger.warning(f"eTIMS submission failed for {invoice_id}: {exc}. Retrying...")
         raise self.retry(exc=exc, countdown=2 ** self.request.retries * 30)
+
+
+@shared_task
+def mark_overdue_invoices():
+    """
+    Daily: move sent/partially-paid invoices past their due date to overdue,
+    and send each organisation one summary notification. Nothing else ever
+    set "overdue", so the dashboard count was always 0.
+
+    status is a bookkeeping column, writable even on invoices locked to a
+    filed tax period (see invoices migration 0003).
+    """
+    from collections import defaultdict
+    from decimal import Decimal
+
+    from apps.notifications.models import NotificationKind
+    from apps.notifications.services import format_kes, notify
+
+    from .models import Invoice, InvoiceStatus
+
+    today = timezone.localdate()
+    newly_overdue = list(
+        Invoice.objects.filter(
+            status__in=[InvoiceStatus.SENT, InvoiceStatus.PARTIAL], due_date__lt=today
+        ).select_related("organization")
+    )
+    if not newly_overdue:
+        return 0
+
+    Invoice.objects.filter(id__in=[inv.id for inv in newly_overdue]).update(
+        status=InvoiceStatus.OVERDUE, updated_at=timezone.now()
+    )
+
+    by_org = defaultdict(list)
+    for inv in newly_overdue:
+        by_org[inv.organization].append(inv)
+    for org, invoices in by_org.items():
+        due = sum((inv.amount_due for inv in invoices), Decimal("0"))
+        if len(invoices) == 1:
+            inv = invoices[0]
+            title = "Invoice overdue"
+            body = f"{inv.invoice_number} is now overdue ({format_kes(due)} due)."
+            url = f"/invoices/{inv.id}"
+        else:
+            title = f"{len(invoices)} invoices overdue"
+            body = f"{len(invoices)} invoices are now overdue ({format_kes(due)} outstanding)."
+            url = "/invoices"
+        notify(org, NotificationKind.INVOICES_OVERDUE, title, body, url=url)
+
+    logger.info(f"mark_overdue_invoices: {len(newly_overdue)} invoice(s) in {len(by_org)} org(s)")
+    return len(newly_overdue)

@@ -7,6 +7,7 @@ import {
 } from "react";
 import api from "@/lib/api";
 import { clearSessionData } from "@/lib/session";
+import { unsubscribeOnLogout } from "@/lib/push";
 
 export interface Organization {
   id: string;
@@ -88,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = useCallback(() => {
+    unsubscribeOnLogout(localStorage.getItem("access_token"));
     const refresh = localStorage.getItem("refresh_token");
     if (refresh) api.post("/auth/logout/", { refresh }).catch(() => {});
     localStorage.removeItem("access_token");
