@@ -59,7 +59,7 @@ function CustomerForm({
         error={errors.name?.message}
         {...register("name")}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="KRA PIN"
           placeholder="P000000000X"
@@ -226,20 +226,20 @@ export default function CustomersPage() {
                 <tbody>
                   {filtered.map((c) => (
                     <tr key={c.id}>
-                      <td className="font-medium">{c.name}</td>
-                      <td className="font-mono text-xs text-muted">{c.kra_pin || "—"}</td>
-                      <td className="text-sm text-muted">{c.email || "—"}</td>
-                      <td className="text-sm text-muted">{c.phone || "—"}</td>
-                      <td>
+                      <td data-label="Name" className="font-medium">{c.name}</td>
+                      <td data-label="KRA PIN" className="font-mono text-xs text-muted">{c.kra_pin || "—"}</td>
+                      <td data-label="Email" className="text-sm text-muted">{c.email || "—"}</td>
+                      <td data-label="Phone" className="text-sm text-muted">{c.phone || "—"}</td>
+                      <td data-label="WHT">
                         {c.is_wht_agent ? (
                           <Badge variant="yellow">WHT</Badge>
                         ) : (
                           <span className="text-xs text-muted">—</span>
                         )}
                       </td>
-                      <td className="text-xs text-muted">{formatDate(c.created_at)}</td>
+                      <td data-label="Added" className="text-xs text-muted">{formatDate(c.created_at)}</td>
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex flex-wrap items-center justify-end gap-1">
                           <button
                             onClick={() => setEditing(c)}
                             className="p-1.5 rounded-lg text-muted hover:text-brand-700 hover:bg-brand-50"

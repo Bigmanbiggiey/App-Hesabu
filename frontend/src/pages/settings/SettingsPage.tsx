@@ -157,13 +157,15 @@ function ProfileTab({ org }: { org: Organization }) {
             </Button>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input label="First Name" {...regMe("first_name")} />
           <Input label="Last Name" {...regMe("last_name")} />
           <Input label="Phone" {...regMe("phone_number")} />
           <div>
             <label className="block text-sm font-medium text-text mb-1.5">Email</label>
-            <div className="input bg-gray-50 text-muted cursor-not-allowed">{user?.email}</div>
+            <div className="input flex items-center bg-gray-50 text-muted cursor-not-allowed">
+              <span className="truncate">{user?.email}</span>
+            </div>
           </div>
         </div>
       </form>

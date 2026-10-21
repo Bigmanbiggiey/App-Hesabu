@@ -30,7 +30,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const { user } = useAuth();
 
   return (
-    <aside className="flex h-full flex-col bg-white border-r border-border">
+    <aside className="flex h-full w-full min-w-0 flex-col bg-white border-r border-border">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-border">
         <div className="h-8 w-8 rounded-lg bg-brand-600 flex items-center justify-center">
@@ -38,7 +38,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
         </div>
         <div className="min-w-0">
           <p className="font-bold text-text">Hesabu</p>
-          <p className="text-xs text-muted truncate">
+          <p className="text-xs text-muted truncate" title={user?.organization?.name}>
             {user?.organization?.name ?? "Loading..."}
           </p>
         </div>

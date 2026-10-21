@@ -267,13 +267,13 @@ function PAYEBreakdownModal({
             <tbody>
               {returns.map((r) => (
                 <tr key={r.id}>
-                  <td className="font-medium">{r.employee_name}</td>
-                  <td className="text-right tabular-nums">{formatKES(r.gross_pay)}</td>
-                  <td className="text-right tabular-nums text-danger">{formatKES(r.paye_deducted)}</td>
-                  <td className="text-right tabular-nums">{formatKES(r.nhif_deduction)}</td>
-                  <td className="text-right tabular-nums">{formatKES(r.nssf_deduction)}</td>
-                  <td className="text-right tabular-nums">{formatKES(r.housing_levy ?? "0")}</td>
-                  <td className="text-right tabular-nums font-semibold text-compliant">
+                  <td data-label="Employee" className="font-medium">{r.employee_name}</td>
+                  <td data-label="Gross" className="text-right tabular-nums">{formatKES(r.gross_pay)}</td>
+                  <td data-label="PAYE" className="text-right tabular-nums text-danger">{formatKES(r.paye_deducted)}</td>
+                  <td data-label="NHIF" className="text-right tabular-nums">{formatKES(r.nhif_deduction)}</td>
+                  <td data-label="NSSF" className="text-right tabular-nums">{formatKES(r.nssf_deduction)}</td>
+                  <td data-label="Hsg Levy" className="text-right tabular-nums">{formatKES(r.housing_levy ?? "0")}</td>
+                  <td data-label="Net Pay" className="text-right tabular-nums font-semibold text-compliant">
                     {formatKES(r.net_pay)}
                   </td>
                 </tr>
@@ -282,12 +282,12 @@ function PAYEBreakdownModal({
             <tfoot className="border-t-2 border-border font-semibold bg-gray-50">
               <tr>
                 <td>Totals</td>
-                <td className="text-right tabular-nums">{formatKES(totals.gross)}</td>
-                <td className="text-right tabular-nums text-danger">{formatKES(totals.paye)}</td>
-                <td className="text-right tabular-nums">{formatKES(totals.nhif)}</td>
-                <td className="text-right tabular-nums">{formatKES(totals.nssf)}</td>
-                <td className="text-right tabular-nums">{formatKES(totals.housing_levy)}</td>
-                <td className="text-right tabular-nums text-compliant">{formatKES(totals.net)}</td>
+                <td data-label="Gross" className="text-right tabular-nums">{formatKES(totals.gross)}</td>
+                <td data-label="PAYE" className="text-right tabular-nums text-danger">{formatKES(totals.paye)}</td>
+                <td data-label="NHIF" className="text-right tabular-nums">{formatKES(totals.nhif)}</td>
+                <td data-label="NSSF" className="text-right tabular-nums">{formatKES(totals.nssf)}</td>
+                <td data-label="Hsg Levy" className="text-right tabular-nums">{formatKES(totals.housing_levy)}</td>
+                <td data-label="Net Pay" className="text-right tabular-nums text-compliant">{formatKES(totals.net)}</td>
               </tr>
             </tfoot>
           </table>
@@ -362,17 +362,17 @@ function VATPeriodsTab() {
                   const isLock = locking && lockVar === p.id;
                   return (
                     <tr key={p.id}>
-                      <td className="font-medium">{monthLabel(p.year, p.month)}</td>
-                      <td>
+                      <td data-label="Period" className="font-medium">{monthLabel(p.year, p.month)}</td>
+                      <td data-label="Status">
                         <Badge variant={statusVariant(p.status)}>{p.status}</Badge>
                       </td>
-                      <td className="text-right tabular-nums">
+                      <td data-label="Output VAT" className="text-right tabular-nums">
                         {vat ? formatKES(vat.output_vat) : "—"}
                       </td>
-                      <td className="text-right tabular-nums">
+                      <td data-label="Input VAT" className="text-right tabular-nums">
                         {vat ? formatKES(vat.input_vat) : "—"}
                       </td>
-                      <td className="text-right tabular-nums font-semibold">
+                      <td data-label="Net Payable" className="text-right tabular-nums font-semibold">
                         {vat ? (
                           <span
                             className={
@@ -388,7 +388,7 @@ function VATPeriodsTab() {
                         )}
                       </td>
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex flex-wrap items-center justify-end gap-1">
                           {p.status === "open" && (
                             <Button
                               size="sm"
@@ -517,18 +517,18 @@ function PAYEPeriodsTab() {
                   const isLock = locking && lockVar === p.id;
                   return (
                     <tr key={p.id}>
-                      <td className="font-medium">{monthLabel(p.year, p.month)}</td>
-                      <td>
+                      <td data-label="Period" className="font-medium">{monthLabel(p.year, p.month)}</td>
+                      <td data-label="Status">
                         <Badge variant={statusVariant(p.status)}>{p.status}</Badge>
                       </td>
-                      <td className="text-right tabular-nums">
+                      <td data-label="Employees" className="text-right tabular-nums">
                         {summary ? summary.count : "—"}
                       </td>
-                      <td className="text-right tabular-nums font-semibold text-danger">
+                      <td data-label="Total PAYE" className="text-right tabular-nums font-semibold text-danger">
                         {summary ? formatKES(summary.totalPAYE) : "—"}
                       </td>
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex flex-wrap items-center justify-end gap-1">
                           {p.status === "open" && (
                             <Button
                               size="sm"

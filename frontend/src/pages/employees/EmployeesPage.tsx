@@ -103,7 +103,7 @@ function EmployeeForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {/* Identity */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="First Name"
           placeholder="John"
@@ -117,7 +117,7 @@ function EmployeeForm({
           {...register("last_name")}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Employee No."
           placeholder="EMP-001"
@@ -131,7 +131,7 @@ function EmployeeForm({
       </div>
 
       {/* Tax numbers */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Input
           label="KRA PIN"
           placeholder="A000000000B"
@@ -150,7 +150,7 @@ function EmployeeForm({
       </div>
 
       {/* Contact */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Email"
           type="email"
@@ -166,7 +166,7 @@ function EmployeeForm({
       </div>
 
       {/* Payroll */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Basic Salary (KES)"
           type="number"
@@ -228,7 +228,7 @@ function EmployeeForm({
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Date of Joining"
           type="date"
@@ -415,7 +415,7 @@ export default function EmployeesPage() {
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">Employees</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="secondary" onClick={() => setShowCalc(true)}>
             <Calculator className="h-4 w-4" />
             Payroll Calculator
@@ -483,19 +483,19 @@ export default function EmployeesPage() {
                   const allowanceTotal = Object.values(emp.allowances).reduce((s, v) => s + v, 0);
                   return (
                     <tr key={emp.id}>
-                      <td>
+                      <td data-label="Name">
                         <p className="font-medium">{emp.full_name}</p>
                         {emp.email && (
                           <p className="text-xs text-muted">{emp.email}</p>
                         )}
                       </td>
-                      <td className="font-mono text-xs text-muted">
+                      <td data-label="Employee No." className="font-mono text-xs text-muted">
                         {emp.employee_number || "—"}
                       </td>
-                      <td className="font-mono text-xs text-muted">
+                      <td data-label="KRA PIN" className="font-mono text-xs text-muted">
                         {emp.kra_pin || "—"}
                       </td>
-                      <td className="text-right tabular-nums font-medium">
+                      <td data-label="Gross Salary" className="text-right tabular-nums font-medium">
                         {formatKES(emp.gross_salary)}
                         {allowanceTotal > 0 && (
                           <p className="text-xs text-muted font-normal">
@@ -503,16 +503,16 @@ export default function EmployeesPage() {
                           </p>
                         )}
                       </td>
-                      <td className="text-right tabular-nums text-muted text-sm">
+                      <td data-label="Net Pay (est.)" className="text-right tabular-nums text-muted text-sm">
                         —
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <Badge variant={emp.is_active ? "green" : "gray"}>
                           {emp.is_active ? "Active" : "Inactive"}
                         </Badge>
                       </td>
                       <td className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex flex-wrap items-center justify-end gap-1">
                           <button
                             onClick={() => setEditing(emp)}
                             className="p-1.5 rounded-lg text-muted hover:text-brand-700 hover:bg-brand-50"

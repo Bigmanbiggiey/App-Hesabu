@@ -213,7 +213,7 @@ export default function CreateInvoicePage() {
             {/* Dates */}
             <div className="card">
               <h2 className="font-semibold text-text mb-4">Invoice Details</h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Invoice Date"
                   type="date"

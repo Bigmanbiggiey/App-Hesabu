@@ -35,20 +35,21 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
       />
       <div
         className={cn(
-          "relative w-full bg-white rounded-card shadow-xl z-10",
+          "relative z-10 flex w-full max-h-[calc(100dvh-2rem)] flex-col bg-white rounded-card shadow-xl",
           sizeMap[size]
         )}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex shrink-0 items-center justify-between px-4 py-4 border-b border-border sm:px-6">
           <h2 className="font-semibold text-text">{title}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-muted"
+            aria-label="Close"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="overflow-y-auto overscroll-contain px-4 py-5 sm:px-6">{children}</div>
       </div>
     </div>
   );

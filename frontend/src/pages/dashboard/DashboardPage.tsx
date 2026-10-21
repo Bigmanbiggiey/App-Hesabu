@@ -155,7 +155,7 @@ export default function DashboardPage() {
               </Button>
             </div>
           ) : (
-            <div className="table-wrapper -mx-6 -mb-6 mt-2">
+            <div className="table-wrapper -mx-4 -mb-4 mt-2 sm:-mx-6 sm:-mb-6">
               <table className="table">
                 <thead>
                   <tr>
@@ -173,19 +173,19 @@ export default function DashboardPage() {
                       className="cursor-pointer"
                       onClick={() => navigate(`/invoices/${inv.id}`)}
                     >
-                      <td className="font-mono text-xs font-medium text-brand-700">
+                      <td data-label="Invoice" className="font-mono text-xs font-medium text-brand-700">
                         {inv.invoice_number}
                       </td>
-                      <td className="font-medium text-sm">{inv.customer_name}</td>
-                      <td className="text-sm text-right tabular-nums">
+                      <td data-label="Customer" className="font-medium text-sm">{inv.customer_name}</td>
+                      <td data-label="Amount" className="text-sm text-right tabular-nums">
                         {formatKES(inv.total_amount)}
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <Badge variant={statusVariant(inv.status as InvoiceStatus)}>
                           {inv.status}
                         </Badge>
                       </td>
-                      <td>
+                      <td data-label="eTIMS">
                         <Badge variant={etimsVariant(inv.etims_status as EtimsStatus)}>
                           {inv.etims_status}
                         </Badge>
