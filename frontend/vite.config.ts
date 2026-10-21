@@ -18,7 +18,7 @@ export default defineConfig({
         theme_color: "#16a34a",
         background_color: "#ffffff",
         display: "standalone",
-        orientation: "portrait",
+        orientation: "any",
         start_url: "/",
         icons: [
           { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -27,13 +27,12 @@ export default defineConfig({
         ],
       },
       workbox: {
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\/api\/v1\//,
-            handler: "NetworkFirst",
-            options: { cacheName: "api-cache", networkTimeoutSeconds: 10 },
-          },
-        ],
+        // The SPA fallback must only answer the React app's own routes; these
+        // paths are served by Django/nginx (an intercepted /admin/ rendered
+        // the React app instead of the Django admin).
+        navigateFallbackDenylist: [/^\/(api|admin|static|media)\//],
+        // No runtime caching of /api/: responses are one tenant's financial
+        // data and must not outlive the session on a (possibly shared) device.
       },
     }),
   ],

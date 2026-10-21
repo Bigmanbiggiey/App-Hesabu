@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import api from "@/lib/api";
+import { clearSessionData } from "@/lib/session";
 
 export interface Organization {
   id: string;
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (refresh) api.post("/auth/logout/", { refresh }).catch(() => {});
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
+    clearSessionData();
     setUser(null);
   }, []);
 

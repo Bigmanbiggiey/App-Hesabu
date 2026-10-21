@@ -7,6 +7,9 @@ import "./index.css";
 import App from "./App";
 import { queryClient } from "./lib/queryClient";
 import { AuthProvider } from "./contexts/AuthContext";
+import { purgeLegacyApiCache } from "./lib/session";
+
+purgeLegacyApiCache();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

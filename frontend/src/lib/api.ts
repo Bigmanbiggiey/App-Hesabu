@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { clearSessionData } from "./session";
 
 const api = axios.create({
   baseURL: "/api/v1",
@@ -45,6 +46,7 @@ function refreshAccessToken(): Promise<string> {
 function forceLogout() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
+  clearSessionData();
   if (window.location.pathname !== "/login") {
     window.location.href = "/login";
   }
