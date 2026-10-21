@@ -16,6 +16,16 @@ class EtimsError(Exception):
     pass
 
 
+class EtimsRejected(EtimsError):
+    """KRA processed the submission and refused it (non-"000" resultCd).
+    Unlike timeouts/network errors, retrying the same payload won't help."""
+
+    def __init__(self, code: str, message: str):
+        self.code = code
+        self.message = message
+        super().__init__(f"KRA rejected submission. Code: {code} — {message}")
+
+
 class EtimsService:
     def __init__(self, organization):
         self.organization = organization
@@ -43,9 +53,7 @@ class EtimsService:
             data = response.json()
             result_code = data.get("resultCd", "")
             if result_code != "000":
-                raise EtimsError(
-                    f"KRA rejected submission. Code: {result_code} — {data.get('resultMsg', '')}"
-                )
+                raise EtimsRejected(result_code, data.get("resultMsg", ""))
             return data.get("data", {})
         except requests.Timeout:
             raise EtimsError("KRA eTIMS API request timed out.")

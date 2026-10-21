@@ -12,8 +12,13 @@ export default defineConfig({
       // "prompt": a new service worker waits until the user accepts the
       // "new version" toast (UpdatePrompt), instead of taking over mid-task.
       registerType: "prompt",
-      // Registration happens in UpdatePrompt via virtual:pwa-register/react.
+      // Registration happens in AppStatus via virtual:pwa-register/react.
       injectRegister: false,
+      // Our own service worker (src/sw.ts): precaching and the SPA fallback
+      // as before, plus Web Push display and notification clicks.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
       includeAssets: ["logo.svg", "icons/*.png"],
       manifest: {
         id: "/",
@@ -46,14 +51,6 @@ export default defineConfig({
           { src: "screenshots/invoices-narrow.png", sizes: "780x1688", type: "image/png", form_factor: "narrow", label: "Invoices" },
           { src: "screenshots/dashboard-wide.png", sizes: "1920x1200", type: "image/png", form_factor: "wide", label: "Dashboard" },
         ],
-      },
-      workbox: {
-        // The SPA fallback must only answer the React app's own routes; these
-        // paths are served by Django/nginx (an intercepted /admin/ rendered
-        // the React app instead of the Django admin).
-        navigateFallbackDenylist: [/^\/(api|admin|static|media)\//],
-        // No runtime caching of /api/: responses are one tenant's financial
-        // data and must not outlive the session on a (possibly shared) device.
       },
     }),
   ],

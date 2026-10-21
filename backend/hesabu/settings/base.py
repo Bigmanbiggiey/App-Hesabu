@@ -1,5 +1,6 @@
 from pathlib import Path
 import environ
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -36,6 +37,7 @@ LOCAL_APPS = [
     "apps.payments",
     "apps.taxes",
     "apps.billing",
+    "apps.notifications",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -156,6 +158,26 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Africa/Nairobi"
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+# DatabaseScheduler copies these into its tables when beat starts; times are
+# CELERY_TIMEZONE (Nairobi).
+CELERY_BEAT_SCHEDULE = {
+    "expire-trials": {
+        "task": "apps.billing.tasks.expire_trials",
+        "schedule": crontab(hour=0, minute=5),
+    },
+    "expire-subscriptions": {
+        "task": "apps.billing.tasks.expire_subscriptions",
+        "schedule": crontab(hour=0, minute=10),
+    },
+    "mark-overdue-invoices": {
+        "task": "apps.invoices.tasks.mark_overdue_invoices",
+        "schedule": crontab(hour=6, minute=0),
+    },
+    "send-filing-reminders": {
+        "task": "apps.taxes.tasks.send_filing_reminders",
+        "schedule": crontab(hour=8, minute=0),
+    },
+}
 
 # ── Internationalisation ──────────────────────────────────────────────────────
 LANGUAGE_CODE = "en-us"
@@ -183,6 +205,12 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Hesabu <noreply@hesabu.c
 # ── External Services ─────────────────────────────────────────────────────────
 ETIMS_BASE_URL = env("ETIMS_BASE_URL", default="https://etims-sbx.kra.go.ke/etims-api")
 ETIMS_PIN = env("ETIMS_PIN", default="")
+
+# Web Push (VAPID). Empty keys disable push delivery; in-app notifications
+# still work. Generate with: python manage.py generate_vapid_keys
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
+VAPID_SUBJECT = env("VAPID_SUBJECT", default="mailto:support@hesabu.co.ke")
 
 DARAJA_BASE_URL = env("DARAJA_BASE_URL", default="https://sandbox.safaricom.co.ke")
 DARAJA_CONSUMER_KEY = env("DARAJA_CONSUMER_KEY", default="")

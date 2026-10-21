@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import {
   Building2, Zap, Smartphone, FileText, Users, CreditCard,
-  CheckCircle, AlertTriangle, Save,
+  CheckCircle, AlertTriangle, Save, Bell,
 } from "lucide-react";
 import { useOrganization, useUpdateOrganization, useUpdateMe, useTeam } from "@/hooks/useSettings";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +13,7 @@ import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "@/lib/utils";
 import type { Organization } from "@/contexts/AuthContext";
+import { NotificationSettings } from "@/components/notifications/NotificationSettings";
 
 // ── Kenya counties ────────────────────────────────────────────────────────────
 const COUNTIES = [
@@ -603,7 +605,7 @@ function BillingTab({ org }: { org: Organization }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
-type Tab = "profile" | "etims" | "mpesa" | "invoice" | "team" | "billing";
+type Tab = "profile" | "etims" | "mpesa" | "invoice" | "team" | "billing" | "notifications";
 
 const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "profile", label: "Profile", icon: Building2 },
@@ -612,15 +614,32 @@ const TABS: { key: Tab; label: string; icon: React.ElementType }[] = [
   { key: "invoice", label: "Invoices", icon: FileText },
   { key: "team", label: "Team", icon: Users },
   { key: "billing", label: "Billing", icon: CreditCard },
+  { key: "notifications", label: "Notifications", icon: Bell },
 ];
 
+const isTab = (value: string | null): value is Tab => TABS.some((t) => t.key === value);
+
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>("profile");
+  const [searchParams] = useSearchParams();
+  const requestedTab = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(isTab(requestedTab) ? requestedTab : "profile");
   const { data: org, isLoading } = useOrganization();
 
-  // Default to eTIMS tab if not yet configured
+  // The tab bar scrolls sideways on phones; keep the active tab visible
+  // (e.g. arriving on ?tab=notifications, the last tab).
+  const activeTabRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (org && !org.etims_device_serial) setTab("etims");
+    activeTabRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [tab, isLoading]);
+
+  // Follow ?tab= links (e.g. "Notification settings" in the bell panel).
+  useEffect(() => {
+    if (isTab(requestedTab)) setTab(requestedTab);
+  }, [requestedTab]);
+
+  // Default to eTIMS tab if not yet configured, unless a tab was asked for
+  useEffect(() => {
+    if (org && !org.etims_device_serial && !isTab(requestedTab)) setTab("etims");
   }, [org?.etims_device_serial]);
 
   if (isLoading || !org) {
@@ -641,6 +660,7 @@ export default function SettingsPage() {
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
+            ref={tab === key ? activeTabRef : undefined}
             onClick={() => setTab(key)}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
               tab === key
@@ -668,6 +688,7 @@ export default function SettingsPage() {
         {tab === "invoice" && <InvoiceTab org={org} />}
         {tab === "team" && <TeamTab />}
         {tab === "billing" && <BillingTab org={org} />}
+        {tab === "notifications" && <NotificationSettings />}
       </div>
     </div>
   );

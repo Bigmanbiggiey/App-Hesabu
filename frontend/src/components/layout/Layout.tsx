@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import { InstallBanner } from "@/components/pwa/Install";
+import { NotificationBridge } from "@/components/notifications/NotificationBridge";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 import InvoicesPage from "@/pages/invoices/InvoicesPage";
 import CreateInvoicePage from "@/pages/invoices/CreateInvoicePage";
@@ -41,6 +42,7 @@ export default function Layout() {
       {/* Main */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
+        <NotificationBridge />
         <main className="flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           <InstallBanner />
           <Routes>

@@ -164,6 +164,29 @@ html {
     @apply bg-brand-50 text-brand-700;
   }
 
+  /* Bell panel: a native popover (NotificationBell). Fixed under the top bar
+     instead of anchor positioning (not yet in most browsers). Only the open
+     state gets display:flex, or it would override the UA's display:none for
+     a closed popover; .\:popover-open is the polyfill's stand-in for
+     :popover-open, paired via :is() so unsupporting browsers keep the rule. */
+  .notifications-panel {
+    position: fixed;
+    inset: auto;
+    top: calc(3.5rem + env(safe-area-inset-top) + 0.25rem);
+    right: max(0.5rem, env(safe-area-inset-right));
+    width: min(24rem, calc(100vw - 1rem));
+    max-height: min(32rem, calc(100dvh - 5rem - env(safe-area-inset-top)));
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    @apply rounded-card border border-border bg-white shadow-xl;
+  }
+
+  .notifications-panel:is(:popover-open, .\:popover-open) {
+    display: flex;
+    flex-direction: column;
+  }
+
   .page-header {
     @apply flex flex-wrap items-center justify-between gap-3 mb-6;
   }
