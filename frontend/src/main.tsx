@@ -8,6 +8,7 @@ import App from "./App";
 import { queryClient } from "./lib/queryClient";
 import { AuthProvider } from "./contexts/AuthContext";
 import { purgeLegacyApiCache } from "./lib/session";
+import "./lib/pwa"; // starts listening for beforeinstallprompt before React mounts
 
 purgeLegacyApiCache();
 

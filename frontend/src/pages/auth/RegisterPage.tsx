@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import api from "@/lib/api";
+import api, { networkErrorMessage } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -46,7 +46,7 @@ export default function RegisterPage() {
       const msg = detail
         ? Object.values(detail).flat().join(" ")
         : "Registration failed. Please try again.";
-      setServerError(msg);
+      setServerError(networkErrorMessage(err) ?? msg);
     }
   };
 
@@ -54,9 +54,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
-          <div className="h-12 w-12 rounded-xl bg-brand-600 flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-xl">H</span>
-          </div>
+          <img src="/logo.svg" alt="Hesabu" className="h-12 w-12 mb-4" />
           <h1 className="text-2xl font-bold text-text">Start your free trial</h1>
           <p className="text-sm text-muted mt-1">14 days free · No credit card required</p>
         </div>

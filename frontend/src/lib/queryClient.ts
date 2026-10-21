@@ -7,5 +7,10 @@ export const queryClient = new QueryClient({
       retry: 1,
       refetchOnWindowFocus: false,
     },
+    mutations: {
+      // Default "online" pauses an offline mutation and replays it on
+      // reconnect; for invoices/payments that's a surprise submission later.
+      networkMode: "always",
+    },
   },
 });
