@@ -22,6 +22,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     <button
       ref={ref}
       className={cn(
+        "btn",
         variantMap[variant],
         size === "sm" && "btn-sm",
         className

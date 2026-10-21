@@ -81,8 +81,6 @@ class TeamMemberViewSet(
 
     def get_queryset(self):
         org = self.request.organization
-        if not org:
-            return User.objects.none()
         return User.objects.filter(organization=org).order_by("role", "first_name")
 
     def perform_create(self, serializer):
@@ -116,8 +114,6 @@ def dashboard_stats(request):
     from apps.payments.models import MpesaTransaction
 
     org = request.organization
-    if not org:
-        return Response({})
 
     now = timezone.now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -149,8 +145,6 @@ def dashboard_stats(request):
 @permission_classes([IsAuthenticated])
 def organization_detail(request):
     org = request.organization
-    if not org:
-        return Response({"detail": "No organization found."}, status=404)
 
     if request.method == "GET":
         return Response(OrganizationSerializer(org).data)
@@ -179,8 +173,6 @@ def reports(request):
     from dateutil.relativedelta import relativedelta
 
     org = request.organization
-    if not org:
-        return Response({})
 
     today = date.today()
 

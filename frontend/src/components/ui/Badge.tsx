@@ -18,6 +18,6 @@ const variantMap: Record<Variant, string> = {
 
 export function Badge({ children, variant = "gray", className }: BadgeProps) {
   return (
-    <span className={cn(variantMap[variant], className)}>{children}</span>
+    <span className={cn("badge", variantMap[variant], className)}>{children}</span>
   );
 }

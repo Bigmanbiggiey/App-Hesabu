@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { InstallButton } from "@/components/pwa/Install";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -30,15 +31,13 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const { user } = useAuth();
 
   return (
-    <aside className="flex h-full flex-col bg-white border-r border-border">
+    <aside className="flex h-full w-full min-w-0 flex-col bg-white border-r border-border pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-border">
-        <div className="h-8 w-8 rounded-lg bg-brand-600 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">H</span>
-        </div>
+        <img src="/logo.svg" alt="" className="h-8 w-8 shrink-0" />
         <div className="min-w-0">
           <p className="font-bold text-text">Hesabu</p>
-          <p className="text-xs text-muted truncate">
+          <p className="text-xs text-muted truncate" title={user?.organization?.name}>
             {user?.organization?.name ?? "Loading..."}
           </p>
         </div>
@@ -63,7 +62,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
       </nav>
 
       {/* Settings */}
-      <div className="border-t border-border px-3 py-3">
+      <div className="border-t border-border px-3 py-3 space-y-0.5">
+        <InstallButton variant="link" />
         <NavLink
           to="/settings"
           onClick={onClose}

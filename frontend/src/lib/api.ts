@@ -1,4 +1,5 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { clearSessionData } from "./session";
 
 const api = axios.create({
   baseURL: "/api/v1",
@@ -45,6 +46,7 @@ function refreshAccessToken(): Promise<string> {
 function forceLogout() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("refresh_token");
+  clearSessionData();
   if (window.location.pathname !== "/login") {
     window.location.href = "/login";
   }
@@ -70,5 +72,16 @@ api.interceptors.response.use(
     }
   }
 );
+
+/**
+ * Message for a request that got no HTTP response at all (offline, server
+ * unreachable), so forms don't report e.g. "Invalid email or password" for it.
+ */
+export function networkErrorMessage(err: unknown): string | null {
+  if (!axios.isAxiosError(err) || err.response) return null;
+  return navigator.onLine
+    ? "Can't reach Hesabu right now. Please try again."
+    : "You're offline. Reconnect and try again.";
+}
 
 export default api;

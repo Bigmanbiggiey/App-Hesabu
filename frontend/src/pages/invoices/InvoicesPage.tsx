@@ -161,25 +161,25 @@ export default function InvoicesPage() {
                         className="cursor-pointer"
                         onClick={() => navigate(`/invoices/${inv.id}`)}
                       >
-                        <td className="font-mono text-xs font-medium text-brand-700">
+                        <td data-label="Invoice" className="font-mono text-xs font-medium text-brand-700">
                           {inv.invoice_number}
                         </td>
-                        <td className="font-medium">{inv.customer_name}</td>
-                        <td className="text-muted text-xs">
+                        <td data-label="Customer" className="font-medium">{inv.customer_name}</td>
+                        <td data-label="Date" className="text-muted text-xs">
                           {formatDate(inv.invoice_date)}
                         </td>
-                        <td className="text-right font-medium tabular-nums">
+                        <td data-label="Amount" className="text-right font-medium tabular-nums">
                           {formatKES(inv.total_amount)}
                         </td>
-                        <td className="text-right tabular-nums text-sm">
+                        <td data-label="Due" className="text-right tabular-nums text-sm">
                           {formatKES(inv.amount_due)}
                         </td>
-                        <td>
+                        <td data-label="Status">
                           <Badge variant={statusVariant(inv.status)}>
                             {inv.status}
                           </Badge>
                         </td>
-                        <td>
+                        <td data-label="eTIMS">
                           <Badge variant={etimsVariant(inv.etims_status)}>
                             {inv.etims_status}
                           </Badge>

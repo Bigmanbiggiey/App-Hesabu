@@ -59,77 +59,87 @@ html {
   In Tailwind 4, @apply cannot reference other @layer components classes.
   So .btn is defined in raw CSS, and each variant adds appearance-only
   utilities via @apply (using only real Tailwind utility classes).
+  Kept in the components layer so utility classes passed to <Button>
+  (w-full, justify-start, ...) still override it; unlayered CSS would beat
+  every utility regardless of specificity.
 */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  font-weight: 500;
-  font-size: 0.875rem;
-  border-radius: var(--radius-btn);
-  min-height: 44px; /* --spacing-touch */
-  padding: 0 1.25rem;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: background-color 150ms, color 150ms, border-color 150ms, opacity 150ms;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.btn:focus-visible {
-  outline: 2px solid var(--color-brand-500);
-  outline-offset: 2px;
-}
-.btn:disabled {
-  pointer-events: none;
-  opacity: 0.5;
-}
-.btn-sm {
-  min-height: 2rem;
-  padding: 0 0.75rem;
-  font-size: 0.75rem;
-}
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    border-radius: var(--radius-btn);
+    min-height: 44px; /* --spacing-touch */
+    padding: 0 1.25rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background-color 150ms, color 150ms, border-color 150ms, opacity 150ms;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+  .btn:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  .btn-sm {
+    min-height: 2rem;
+    padding: 0 0.75rem;
+    font-size: 0.75rem;
+  }
 
-/* Variants — @apply only real Tailwind utilities, never custom component classes */
-.btn-primary {
-  @apply bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
-}
-.btn-secondary {
-  @apply bg-brand-50 text-brand-700 hover:bg-brand-100 border-brand-200;
-}
-.btn-ghost {
-  @apply bg-transparent text-text hover:bg-brand-50;
-}
-.btn-danger {
-  @apply bg-danger text-white hover:opacity-90;
+  /* Variants — @apply only real Tailwind utilities, never custom component classes */
+  .btn-primary {
+    @apply bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800;
+  }
+  .btn-secondary {
+    @apply bg-brand-50 text-brand-700 hover:bg-brand-100 border-brand-200;
+  }
+  .btn-ghost {
+    @apply bg-transparent text-text hover:bg-brand-50;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:opacity-90;
+  }
 }
 
 /* ── Badge Base ───────────────────────────────────────────────────────────── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  border-radius: 9999px;
-  padding: 0.125rem 0.625rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
+/* Components layer, like .btn, so utilities passed to <Badge> still win. */
+@layer components {
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    padding: 0.125rem 0.625rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
 
-/* Badge variants — raw CSS only, no @apply chaining */
-.badge-green  { background-color: var(--color-brand-100);  color: var(--color-brand-700); }
-.badge-yellow { background-color: oklch(97% 0.06 85);      color: oklch(40% 0.12 85); }
-.badge-red    { background-color: oklch(96% 0.04 25);      color: oklch(38% 0.18 25); }
-.badge-gray   { background-color: oklch(94% 0.00 0);       color: oklch(45% 0.00 0); }
-.badge-blue   { background-color: oklch(94% 0.04 240);     color: oklch(40% 0.18 240); }
+  /* Badge variants — raw CSS only, no @apply chaining */
+  .badge-green  { background-color: var(--color-brand-100);  color: var(--color-brand-700); }
+  .badge-yellow { background-color: oklch(97% 0.06 85);      color: oklch(40% 0.12 85); }
+  .badge-red    { background-color: oklch(96% 0.04 25);      color: oklch(38% 0.18 25); }
+  .badge-gray   { background-color: oklch(94% 0.00 0);       color: oklch(45% 0.00 0); }
+  .badge-blue   { background-color: oklch(94% 0.04 240);     color: oklch(40% 0.18 240); }
+}
 
 /* ── Reusable Component Classes ───────────────────────────────────────────── */
 @layer components {
   .card {
-    @apply bg-white rounded-card border border-border shadow-sm p-6;
+    @apply bg-white rounded-card border border-border shadow-sm p-4 sm:p-6;
   }
 
+  /* 16px below sm: iOS Safari zooms into any focused control with a smaller
+     font and leaves the page zoomed in afterwards. */
   .input {
-    @apply w-full rounded-btn border border-border bg-white px-3 text-sm
+    @apply w-full rounded-btn border border-border bg-white px-3 text-base sm:text-sm
            focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
            placeholder:text-muted transition-colors;
     min-height: 44px;
@@ -155,15 +165,16 @@ html {
   }
 
   .page-header {
-    @apply flex items-center justify-between mb-6;
+    @apply flex flex-wrap items-center justify-between gap-3 mb-6;
   }
 
   .page-title {
-    @apply text-2xl font-bold text-text;
+    @apply text-xl sm:text-2xl font-bold text-text;
   }
 
   .table-wrapper {
     @apply overflow-x-auto rounded-card border border-border;
+    container-type: inline-size;
   }
 
   .table {
@@ -185,5 +196,43 @@ html {
 
   .table tr:hover td {
     background-color: color-mix(in oklch, var(--color-brand-50) 40%, transparent);
+  }
+
+  /* Narrow tables stack into one card per row: the header row is hidden and
+     each cell shows its column name from data-label. Keyed on the wrapper's
+     width (container query), not the viewport, so tables in narrow cards
+     stack too. Cells without data-label (row actions) get no label. */
+  @container (width < 640px) {
+    .table thead {
+      display: none;
+    }
+
+    .table,
+    .table tbody,
+    .table tfoot,
+    .table tr {
+      display: block;
+    }
+
+    .table tr {
+      @apply py-2 border-b border-border;
+    }
+
+    .table tr:last-child {
+      @apply border-0;
+    }
+
+    .table td {
+      display: flow-root; /* contains the floated label */
+      @apply px-4 py-1.5 border-0 text-right;
+      overflow-wrap: anywhere; /* long emails / references must not widen the card */
+    }
+
+    .table td[data-label]::before {
+      content: attr(data-label);
+      float: left;
+      font-family: var(--font-sans); /* not the cell's font-mono */
+      @apply mr-4 text-left text-xs font-semibold uppercase tracking-wide text-muted leading-6;
+    }
   }
 }

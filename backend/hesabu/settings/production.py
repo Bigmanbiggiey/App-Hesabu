@@ -27,6 +27,30 @@ X_FRAME_OPTIONS = "DENY"
 # so the M-Pesa callback IP allowlist must read the client IP from that header.
 DARAJA_TRUST_FORWARDED_FOR = env.bool("DARAJA_TRUST_FORWARDED_FOR", default=True)
 
+# ── Logging ───────────────────────────────────────────────────────────────────
+# Django's default config only prints to the console when DEBUG=True and mails
+# 500s to ADMINS otherwise, so production errors vanished. Send everything to
+# stderr so `docker logs hesabu-backend-1` shows tracebacks. "django" stays at
+# ERROR so 500s are logged but routine 4xx (expired tokens, 404s) aren't.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "verbose"},
+    },
+    "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
+    "loggers": {
+        "django": {
+            "handlers": ["console"],
+            "level": env("DJANGO_LOG_LEVEL", default="ERROR"),
+            "propagate": False,
+        },
+    },
+}
+
 # ── Static files ──────────────────────────────────────────────────────────────
 # nginx serves /media/ directly (django.conf.urls.static.static() is a no-op
 # once DEBUG=False); whitenoise serves /static/ from inside gunicorn, reached

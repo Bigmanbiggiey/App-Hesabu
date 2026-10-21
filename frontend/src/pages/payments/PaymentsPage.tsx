@@ -210,7 +210,7 @@ function RecordPaymentModal({ onClose }: { onClose: () => void }) {
           />
         )}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           label="Amount (KES)"
           type="number"
@@ -402,25 +402,25 @@ export default function PaymentsPage() {
                     <tbody>
                       {transactions.map((txn) => (
                         <tr key={txn.id}>
-                          <td className="font-mono text-xs font-medium text-brand-700">
+                          <td data-label="Receipt #" className="font-mono text-xs font-medium text-brand-700">
                             {txn.mpesa_receipt_number}
                           </td>
-                          <td>
+                          <td data-label="Payer">
                             <p className="font-medium text-sm">
                               {txn.payer_name || "—"}
                             </p>
                             <p className="text-xs text-muted font-mono">{txn.msisdn}</p>
                           </td>
-                          <td className="text-right font-bold tabular-nums text-mpesa-700">
+                          <td data-label="Amount" className="text-right font-bold tabular-nums text-mpesa-700">
                             {formatKES(txn.amount)}
                           </td>
-                          <td className="font-mono text-xs text-muted">
+                          <td data-label="Bill Ref" className="font-mono text-xs text-muted">
                             {txn.bill_ref_number || "—"}
                           </td>
-                          <td className="text-xs text-muted">
+                          <td data-label="Date" className="text-xs text-muted">
                             {formatDate(txn.transaction_time)}
                           </td>
-                          <td>
+                          <td data-label="Status">
                             <Badge variant={reconVariant(txn.reconciliation_status)}>
                               <span className="flex items-center gap-1">
                                 {reconIcon(txn.reconciliation_status)}
@@ -428,7 +428,7 @@ export default function PaymentsPage() {
                               </span>
                             </Badge>
                           </td>
-                          <td className="font-mono text-xs text-brand-700">
+                          <td data-label="Invoice" className="font-mono text-xs text-brand-700">
                             {txn.invoice_number ?? "—"}
                           </td>
                           <td className="text-right">
@@ -518,20 +518,20 @@ export default function PaymentsPage() {
                   <tbody>
                     {payments.map((p) => (
                       <tr key={p.id}>
-                        <td className="font-mono text-xs font-medium text-brand-700">
+                        <td data-label="Invoice" className="font-mono text-xs font-medium text-brand-700">
                           {p.invoice_number}
                         </td>
-                        <td className="font-medium">{p.customer_name}</td>
-                        <td className="text-right font-bold tabular-nums">
+                        <td data-label="Customer" className="font-medium">{p.customer_name}</td>
+                        <td data-label="Amount" className="text-right font-bold tabular-nums">
                           {formatKES(p.amount)}
                         </td>
-                        <td>
+                        <td data-label="Method">
                           <Badge variant={p.payment_method === "mpesa" ? "green" : "gray"}>
                             {p.payment_method}
                           </Badge>
                         </td>
-                        <td className="text-xs text-muted">{formatDate(p.payment_date)}</td>
-                        <td className="font-mono text-xs text-muted">
+                        <td data-label="Date" className="text-xs text-muted">{formatDate(p.payment_date)}</td>
+                        <td data-label="Reference" className="font-mono text-xs text-muted">
                           {p.reference || "—"}
                         </td>
                       </tr>

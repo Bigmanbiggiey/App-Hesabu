@@ -18,7 +18,7 @@ export default function TopBar({ onMenuClick, title }: TopBarProps) {
   };
 
   return (
-    <header className="h-14 flex items-center justify-between px-4 border-b border-border bg-white shrink-0">
+    <header className="h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] flex items-center justify-between px-4 border-b border-border bg-white shrink-0">
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuClick}

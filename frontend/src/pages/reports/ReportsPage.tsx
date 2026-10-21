@@ -80,7 +80,7 @@ export default function ReportsPage() {
       <h1 className="page-title">Reports</h1>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           label="Revenue (6 months)"
           value={formatKES(totalRevenue)}

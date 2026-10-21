@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/hooks/useAuth";
+import { networkErrorMessage } from "@/lib/api";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
@@ -33,7 +34,7 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
-      setServerError(msg ?? "Invalid email or password.");
+      setServerError(networkErrorMessage(err) ?? msg ?? "Invalid email or password.");
     }
   };
 
@@ -42,9 +43,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="h-12 w-12 rounded-xl bg-brand-600 flex items-center justify-center mb-4">
-            <span className="text-white font-bold text-xl">H</span>
-          </div>
+          <img src="/logo.svg" alt="Hesabu" className="h-12 w-12 mb-4" />
           <h1 className="text-2xl font-bold text-text">Hesabu</h1>
           <p className="text-sm text-muted mt-1">eTIMS & Tax Compliance for Kenyan SMEs</p>
         </div>

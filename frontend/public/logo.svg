@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Hesabu">
+  <!-- Hesabu mark: an "H" drawn as a rising bar chart (right stem taller,
+       crossbar climbing to the right) on the brand-600 green. -->
+  <rect width="512" height="512" rx="112" fill="#007c1a"/>
+  <g fill="#fff">
+    <rect x="140" y="176" width="72" height="208" rx="36"/>
+    <rect x="300" y="128" width="72" height="256" rx="36"/>
+  </g>
+  <path d="M190 290 L322 226" stroke="#fff" stroke-width="56" stroke-linecap="round"/>
+</svg>

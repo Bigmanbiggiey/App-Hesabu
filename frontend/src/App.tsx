@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/layout/Layout";
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
+import { AppStatus } from "@/components/pwa/AppStatus";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -18,17 +19,20 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route
-        path="/*"
-        element={
-          <PrivateRoute>
-            <Layout />
-          </PrivateRoute>
-        }
-      />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/*"
+          element={
+            <PrivateRoute>
+              <Layout />
+            </PrivateRoute>
+          }
+        />
+      </Routes>
+      <AppStatus />
+    </>
   );
 }

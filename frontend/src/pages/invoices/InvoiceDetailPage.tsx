@@ -236,23 +236,23 @@ export default function InvoiceDetailPage() {
                 <tbody>
                   {invoice.line_items.map((item, i) => (
                     <tr key={item.id ?? i}>
-                      <td className="text-muted text-xs">{i + 1}</td>
-                      <td>
+                      <td data-label="#" className="text-muted text-xs">{i + 1}</td>
+                      <td data-label="Description">
                         <p className="font-medium">{item.description}</p>
                         {item.commodity_code && (
                           <p className="text-xs text-muted font-mono">{item.commodity_code}</p>
                         )}
                       </td>
-                      <td className="text-right tabular-nums">{item.quantity}</td>
-                      <td className="text-right tabular-nums">
+                      <td data-label="Qty" className="text-right tabular-nums">{item.quantity}</td>
+                      <td data-label="Unit Price" className="text-right tabular-nums">
                         {formatKES(item.unit_price ?? "0")}
                       </td>
-                      <td className="text-right">
+                      <td data-label="VAT" className="text-right">
                         <Badge variant={item.vat_class === "standard" ? "blue" : "gray"}>
                           {item.vat_class === "standard" ? "16%" : item.vat_class === "zero_rated" ? "0%" : "Exempt"}
                         </Badge>
                       </td>
-                      <td className="text-right tabular-nums font-medium">
+                      <td data-label="Amount" className="text-right tabular-nums font-medium">
                         {formatKES(item.line_total ?? "0")}
                       </td>
                     </tr>
