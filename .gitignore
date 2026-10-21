@@ -19,6 +19,11 @@ backend/.env
 # ── Local-only production testing ────────────────────────────────────────────
 docker-compose.prod.local.yml
 
+# ── Editors ───────────────────────────────────────────────────────────────────
+# vim swap files: editing .env leaves ..env.swp, a copy of the secrets.
+*.swp
+*.swo
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 *.log
 .DS_Store
