@@ -89,3 +89,34 @@ def test_staff_can_still_use_payroll_calculator(clients):
         format="json",
     )
     assert resp.status_code == 200
+
+
+# ── Users without an organisation (e.g. made with `createsuperuser`) ─────────
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "/api/v1/invoices/",
+        "/api/v1/invoices/customers/",
+        "/api/v1/payments/",
+        "/api/v1/payments/mpesa/transactions/",
+        "/api/v1/taxes/periods/",
+        "/api/v1/taxes/vat-returns/",
+        "/api/v1/taxes/employees/",
+        "/api/v1/auth/organization/",
+        "/api/v1/auth/dashboard/stats/",
+        "/api/v1/auth/team/",
+        "/api/v1/billing/status/",
+    ],
+)
+def test_user_without_org_gets_403_not_500(make_auth_client, url):
+    client = make_auth_client(UserFactory(organization=None, is_superuser=True, is_staff=True))
+    resp = client.get(url)
+    assert resp.status_code == 403
+    assert resp.json()["detail"].startswith("Your account is not linked to an organisation")
+
+
+def test_user_without_org_can_still_load_profile(make_auth_client):
+    """/auth/me/ doesn't need an org, so the frontend can still render the user."""
+    client = make_auth_client(UserFactory(organization=None))
+    assert client.get("/api/v1/auth/me/").status_code == 200
